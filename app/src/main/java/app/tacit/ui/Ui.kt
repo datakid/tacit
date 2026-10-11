@@ -1,7 +1,9 @@
 package app.tacit.ui
 
+import android.app.Activity
 import android.content.Context
 import android.content.res.Configuration
+import android.os.Build
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -9,13 +11,72 @@ import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.view.Window
+import android.view.WindowInsetsController
 import android.widget.LinearLayout
 import android.widget.TextView
 import app.tacit.Graph
+import app.tacit.R
 
 class Palette(val background: Int, val foreground: Int, val muted: Int, val line: Int, val surface: Int)
 
+data class Look(
+    val theme: String,
+    val dark: Boolean,
+    val wallpaper: Boolean,
+    val barBottom: Boolean,
+    val clock: Boolean,
+    val date: Boolean,
+    val battery: Boolean,
+    val visiblePassword: Boolean,
+    val iconMode: String,
+    val resultCount: Int,
+    val rules: String
+) {
+    fun sameViews(other: Look): Boolean = copy(rules = "") == other.copy(rules = "")
+}
+
 object Ui {
+
+    fun look(context: Context): Look {
+        val prefs = Graph.prefs
+        return Look(
+            theme = prefs.theme,
+            dark = isDark(context),
+            wallpaper = prefs.showWallpaper,
+            barBottom = prefs.barAtBottom,
+            clock = prefs.showClock,
+            date = prefs.showDate,
+            battery = prefs.showBattery,
+            visiblePassword = prefs.visiblePasswordInput,
+            iconMode = prefs.iconMode,
+            resultCount = prefs.resultCount,
+            rules = listOf(
+                prefs.kindOrder, prefs.strictness, prefs.transliterate, prefs.starredAsPins, prefs.defaultEngine, prefs.customEngines,
+                prefs.prefixCalculator, prefs.prefixClipboard, prefs.prefixSettings, prefs.prefixContacts, prefs.prefixFiles,
+                prefs.prefixSnippets, prefs.precision, prefs.contactsEnabled, prefs.filesEnabled, prefs.clipboardEnabled
+            ).joinToString("\u0001")
+        )
+    }
+
+    fun applyTheme(activity: Activity) {
+        when (Graph.prefs.theme) {
+            "dark" -> activity.setTheme(R.style.Theme_Tacit_Dark)
+            "light" -> activity.setTheme(R.style.Theme_Tacit_Light)
+        }
+    }
+
+    fun applyBars(window: Window, dark: Boolean) {
+        if (Build.VERSION.SDK_INT >= 30) {
+            val mask = WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+            window.insetsController?.setSystemBarsAppearance(if (dark) 0 else mask, mask)
+        } else {
+            val light = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+            val decor = window.decorView
+            @Suppress("DEPRECATION")
+            decor.systemUiVisibility = if (dark) decor.systemUiVisibility and light.inv() else decor.systemUiVisibility or light
+        }
+    }
 
     fun isDark(context: Context): Boolean = when (Graph.prefs.theme) {
         "dark" -> true

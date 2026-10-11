@@ -6,6 +6,8 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.res.Configuration
+import android.graphics.PixelFormat
 import android.graphics.Rect
 import android.os.Build
 import android.os.Bundle
@@ -60,9 +62,11 @@ class SearchActivity : Activity(), RowCallbacks {
     private var currentQuery = ""
     private var currentScope = Scope.ALL
     private var backCallback: Any? = null
+    private var look: Look? = null
     private val refreshListener: () -> Unit = { if (::input.isInitialized) runQuery(input.text.toString()) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        Ui.applyTheme(this)
         super.onCreate(savedInstanceState)
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE or WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
         if (!Graph.prefs.animations) overridePendingTransitionCompat()
@@ -83,13 +87,51 @@ class SearchActivity : Activity(), RowCallbacks {
         }
     }
 
+    private fun rebuildViews() {
+        val typed = input.text.toString()
+        buildViews()
+        if (typed.isEmpty()) {
+            runQuery("")
+        } else {
+            input.setText(typed)
+            input.setSelection(typed.length)
+        }
+        if (batteryRegistered) showBattery(registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED)))
+    }
+
+    private fun refreshLook(): Boolean {
+        val before = look ?: return false
+        val now = Ui.look(this)
+        if (now == before) return false
+        if (now.theme != before.theme || now.dark != before.dark) {
+            recreate()
+            return true
+        }
+        if (now.sameViews(before)) {
+            look = now
+            runQuery(input.text.toString())
+        } else {
+            rebuildViews()
+        }
+        return false
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        if (look != null) refreshLook()
+    }
+
     private fun buildViews() {
+        val current = Ui.look(this)
+        look = current
         val palette = Ui.palette(this)
-        val showWallpaper = Graph.prefs.showWallpaper
-        if (showWallpaper) {
+        if (current.wallpaper) {
             window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
+            window.setFormat(PixelFormat.TRANSLUCENT)
             window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable((palette.background and 0x00FFFFFF) or 0x99000000.toInt()))
         } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
+            window.setFormat(PixelFormat.OPAQUE)
             window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(palette.background))
         }
         window.statusBarColor = android.graphics.Color.TRANSPARENT
@@ -134,10 +176,10 @@ class SearchActivity : Activity(), RowCallbacks {
         clockBlock.addView(clock)
         clockBlock.addView(date)
         clockBlock.addView(batteryText)
-        Ui.gone(clock, !Graph.prefs.showClock)
-        Ui.gone(date, !Graph.prefs.showDate)
-        Ui.gone(batteryText, !Graph.prefs.showBattery)
-        Ui.gone(clockBlock, !Graph.prefs.showClock && !Graph.prefs.showDate && !Graph.prefs.showBattery)
+        Ui.gone(clock, !current.clock)
+        Ui.gone(date, !current.date)
+        Ui.gone(batteryText, !current.battery)
+        Ui.gone(clockBlock, !current.clock && !current.date && !current.battery)
 
         adapter = ResultAdapter(this, this)
         adapter.palette = palette
@@ -150,7 +192,7 @@ class SearchActivity : Activity(), RowCallbacks {
             selector = android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT)
             isFocusable = false
             itemsCanFocus = false
-            setStackFromBottom(Graph.prefs.barAtBottom)
+            setStackFromBottom(current.barBottom)
             setPadding(Ui.dp(context, 8), 0, Ui.dp(context, 8), 0)
             clipToPadding = false
         }
@@ -169,7 +211,7 @@ class SearchActivity : Activity(), RowCallbacks {
             textSize = 18f
             isSingleLine = true
             imeOptions = EditorInfo.IME_ACTION_GO or EditorInfo.IME_FLAG_NO_EXTRACT_UI or EditorInfo.IME_FLAG_NO_FULLSCREEN
-            inputType = if (Graph.prefs.visiblePasswordInput) {
+            inputType = if (current.visiblePassword) {
                 InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
             } else {
                 InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_FILTER or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
@@ -207,7 +249,7 @@ class SearchActivity : Activity(), RowCallbacks {
         }
 
         val listParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
-        if (Graph.prefs.barAtBottom) {
+        if (current.barBottom) {
             root.addView(clockBlock, Ui.matchWrap())
             root.addView(list, listParams)
             root.addView(emptyHint, Ui.matchWrap())
@@ -219,6 +261,7 @@ class SearchActivity : Activity(), RowCallbacks {
             root.addView(list, listParams)
         }
         setContentView(FrameLayout(this).apply { addView(root) })
+        Ui.applyBars(window, current.dark)
         refreshMessengers()
     }
 
@@ -265,6 +308,7 @@ class SearchActivity : Activity(), RowCallbacks {
 
     override fun onResume() {
         super.onResume()
+        if (refreshLook()) return
         applyRecentsPreference()
         showKeyboard()
         if (Graph.prefs.showBattery) {

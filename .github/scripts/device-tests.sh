@@ -3,8 +3,38 @@ adb logcat -c
 status=0
 : > device-tests.log
 : > tests-ran.txt
+rm -f timeout-diagnostics.txt
 for cls in ${1//,/ }; do
-  ./gradlew connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class="$cls" --stacktrace >> device-tests.log 2>&1 || status=1
+  ./gradlew connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class="$cls" --stacktrace >> device-tests.log 2>&1 &
+  gpid=$!
+  waited=0
+  while kill -0 "$gpid" 2>/dev/null && [ "$waited" -lt 300 ]; do
+    sleep 5
+    waited=$((waited + 5))
+  done
+  if kill -0 "$gpid" 2>/dev/null; then
+    status=1
+    echo "TIMEOUT in $cls" >> tests-ran.txt
+    {
+      adb root
+      sleep 3
+      adb wait-for-device
+      pid=$(adb shell pidof app.tacit | tr -d '\r')
+      echo "app pid: $pid"
+      adb shell dumpsys activity activities | grep -E "mResumedActivity|topResumedActivity|ResumedActivity"
+      adb shell dumpsys window | grep -E "mCurrentFocus|mFocusedApp|mFocusedWindow"
+      adb shell kill -3 "$pid"
+      sleep 4
+      latest=$(adb shell 'ls -t /data/anr 2>/dev/null | head -1' | tr -d '\r')
+      echo "anr file: $latest"
+      adb shell "cat /data/anr/$latest" > anr-full.txt
+      awk '/^"/{keep=($0 ~ /Instr|Test|main|Espresso/)} keep && (/^"/ || /^  at /)' anr-full.txt | head -120
+    } > timeout-diagnostics.txt 2>&1
+    kill "$gpid" 2>/dev/null
+    wait "$gpid" 2>/dev/null
+  else
+    wait "$gpid" || status=1
+  fi
   find app/build/outputs/androidTest-results -name 'TEST-*.xml' 2>/dev/null | while read -r f; do
     grep -oE '<testsuite [^>]*>' "$f" | head -1
     grep -oE '<testcase [^>]*>' "$f"
@@ -14,14 +44,16 @@ done
 adb logcat -d -v threadtime > logcat.txt
 {
   echo "exit status: $status"
-  echo "--- crash in logcat"
-  grep -n -A45 "FATAL EXCEPTION" logcat.txt | head -150
-  echo "--- instrumentation output"
-  grep -nE "Process crashed|FAILED|AssertionError|Exception|Tests on|tests completed|> Task :app:connected" device-tests.log | head -60
-  echo "--- clipboard service lines"
-  grep -iE "clipboard" logcat.txt | grep -iE "deny|denied|not focused|access" | head -20
   echo "--- tests that ran"
   cat tests-ran.txt
+  echo "--- timeout diagnostics"
+  cat timeout-diagnostics.txt 2>/dev/null
+  echo "--- crash in logcat"
+  grep -n -A45 "FATAL EXCEPTION" logcat.txt | head -100
+  echo "--- clipboard service lines"
+  grep -iE "clipboard" logcat.txt | grep -iE "deny|denied|not focused|access" | head -6
+  echo "--- instrumentation output"
+  grep -nE "Process crashed|FAILED|AssertionError|Tests on|tests completed" device-tests.log | head -20
 } > device-summary.txt
 msg=$(head -c 30000 device-summary.txt)
 msg="${msg//'%'/'%25'}"

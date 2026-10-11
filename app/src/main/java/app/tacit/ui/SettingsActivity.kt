@@ -32,10 +32,15 @@ class SettingsActivity : Activity() {
     private val prefs get() = Graph.prefs
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        Ui.applyTheme(this)
         super.onCreate(savedInstanceState)
-        palette = Ui.palette(this)
-        window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(palette.background))
-        build()
+        container = Ui.column(this)
+        val pad = Ui.dp(this, 16)
+        container.setPadding(pad, pad, pad, pad * 2)
+        setContentView(ScrollView(this).apply {
+            fitsSystemWindows = true
+            addView(container)
+        })
     }
 
     override fun onResume() {
@@ -44,25 +49,22 @@ class SettingsActivity : Activity() {
     }
 
     private fun build() {
-        container = Ui.column(this)
-        val pad = Ui.dp(this, 16)
-        container.setPadding(pad, pad, pad, pad * 2)
-        val scroll = ScrollView(this).apply {
-            fitsSystemWindows = true
-            addView(container)
-        }
+        palette = Ui.palette(this)
+        window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(palette.background))
+        Ui.applyBars(window, Ui.isDark(this))
+        container.removeAllViews()
         header(getString(R.string.settings))
 
         section(R.string.sec_look)
         choice(R.string.theme, listOf("system", "dark", "light"), listOf(R.string.theme_system, R.string.theme_dark, R.string.theme_light),
-            prefs.theme) { prefs.theme = it; restartSearch() }
+            prefs.theme, onPick = { prefs.theme = it }, after = { recreate() })
         choice(R.string.icons, listOf("mono", "color", "none"), listOf(R.string.icons_mono, R.string.icons_color, R.string.icons_none),
             prefs.iconMode) { prefs.iconMode = it; Graph.icons.clear() }
-        toggle(R.string.bar_bottom, prefs.barAtBottom) { prefs.barAtBottom = it; restartSearch() }
-        toggle(R.string.show_clock, prefs.showClock) { prefs.showClock = it; restartSearch() }
-        toggle(R.string.show_date, prefs.showDate) { prefs.showDate = it; restartSearch() }
-        toggle(R.string.show_battery, prefs.showBattery) { prefs.showBattery = it; restartSearch() }
-        toggle(R.string.wallpaper, prefs.showWallpaper) { prefs.showWallpaper = it; restartSearch() }
+        toggle(R.string.bar_bottom, prefs.barAtBottom) { prefs.barAtBottom = it }
+        toggle(R.string.show_clock, prefs.showClock) { prefs.showClock = it }
+        toggle(R.string.show_date, prefs.showDate) { prefs.showDate = it }
+        toggle(R.string.show_battery, prefs.showBattery) { prefs.showBattery = it }
+        toggle(R.string.wallpaper, prefs.showWallpaper) { prefs.showWallpaper = it }
         number(R.string.result_count, prefs.resultCount, 3, 30) { prefs.resultCount = it }
 
         section(R.string.sec_sources)
@@ -76,6 +78,7 @@ class SettingsActivity : Activity() {
         toggle(R.string.clipboard, prefs.clipboardEnabled) { enabled ->
             prefs.clipboardEnabled = enabled
             if (!enabled) Graph.clipboard.clear()
+            rebuildSoon()
         }
         if (prefs.clipboardEnabled) {
             note(R.string.clipboard_limit)
@@ -99,7 +102,7 @@ class SettingsActivity : Activity() {
         choice(R.string.fuzzy, listOf("OFF", "NORMAL", "LOOSE"), listOf(R.string.fuzzy_off, R.string.fuzzy_normal, R.string.fuzzy_loose),
             prefs.strictness) { prefs.strictness = it; Graph.applyPrefs() }
         toggle(R.string.transliterate, prefs.transliterate) { prefs.transliterate = it; Graph.applyPrefs(); Graph.requestRefresh() }
-        toggle(R.string.visible_password, prefs.visiblePasswordInput) { prefs.visiblePasswordInput = it; restartSearch() }
+        toggle(R.string.visible_password, prefs.visiblePasswordInput) { prefs.visiblePasswordInput = it }
         toggle(R.string.starred_pins, prefs.starredAsPins) { prefs.starredAsPins = it; Graph.requestRebuild() }
         textPref(R.string.kind_order, prefs.kindOrder) { prefs.kindOrder = it; Graph.applyPrefs() }
         action(getString(R.string.aliases)) { startActivity(Intent(this, AliasesActivity::class.java)) }
@@ -150,17 +153,14 @@ class SettingsActivity : Activity() {
             Graph.requestRefresh()
         }
         note(R.string.about_line)
+    }
 
-        setContentView(scroll)
+    private fun rebuildSoon() {
+        container.post { build() }
     }
 
     private inline fun safely(block: () -> Unit) {
         runCatching { block() }
-    }
-
-    private fun restartSearch() {
-        Graph.applyPrefs()
-        build()
     }
 
     private fun setContacts(enabled: Boolean) {
@@ -349,7 +349,14 @@ class SettingsActivity : Activity() {
         rowView(label, null).setOnClickListener { onClick() }
     }
 
-    private fun choice(label: Int, values: List<String>, labels: List<Int>, current: String, onPick: (String) -> Unit) {
+    private fun choice(
+        label: Int,
+        values: List<String>,
+        labels: List<Int>,
+        current: String,
+        after: () -> Unit = { build() },
+        onPick: (String) -> Unit
+    ) {
         val index = values.indexOf(current).coerceAtLeast(0)
         rowView(getString(label), getString(labels[index])).setOnClickListener {
             AlertDialog.Builder(this)
@@ -357,7 +364,7 @@ class SettingsActivity : Activity() {
                 .setSingleChoiceItems(labels.map { getString(it) }.toTypedArray(), index) { dialog, which ->
                     onPick(values[which])
                     dialog.dismiss()
-                    build()
+                    after()
                 }
                 .show()
         }

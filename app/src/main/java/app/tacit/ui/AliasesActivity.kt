@@ -41,6 +41,7 @@ class AliasesActivity : Activity() {
     private lateinit var conflicts: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        Ui.applyTheme(this)
         super.onCreate(savedInstanceState)
         palette = Ui.palette(this)
         window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(palette.background))
@@ -106,6 +107,7 @@ class AliasesActivity : Activity() {
         }
         root.addView(list, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
         setContentView(root)
+        Ui.applyBars(window, Ui.isDark(this))
         buildTabs()
         reload()
     }
