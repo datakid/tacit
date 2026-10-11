@@ -9,6 +9,12 @@ adb logcat -d -v threadtime > logcat.txt
   grep -n -A45 "FATAL EXCEPTION" logcat.txt | head -150
   echo "--- instrumentation output"
   grep -nE "Process crashed|FAILED|AssertionError|Exception|Tests on|tests completed|> Task :app:connected" device-tests.log | head -60
+  echo "--- tests that ran"
+  find app/build/outputs/androidTest-results -name 'TEST-*.xml' 2>/dev/null | while read -r f; do
+    grep -oE '<testsuite [^>]*>' "$f" | head -1
+    grep -oE '<testcase [^>]*>' "$f"
+    grep -oE '<failure message="[^"]{0,300}' "$f"
+  done
 } > device-summary.txt
 msg=$(head -c 30000 device-summary.txt)
 msg="${msg//'%'/'%25'}"
