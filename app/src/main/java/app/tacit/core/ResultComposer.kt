@@ -6,8 +6,8 @@ class ComposeInput(
     val raw: String,
     val limit: Int,
     val defaultEngine: WebEngine,
-    val clipboardItems: () -> List<SearchItem>,
-    val quicklinkRows: (String) -> List<SearchItem> = { emptyList() }
+    val quicklinkRows: (String) -> List<SearchItem> = { emptyList() },
+    val clipboardItems: () -> List<SearchItem>
 )
 
 class ComposeOutput(val rows: List<SearchItem>, val parsed: ParsedQuery, val wantsFiles: Boolean)
