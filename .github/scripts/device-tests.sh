@@ -1,7 +1,16 @@
 #!/usr/bin/env bash
 adb logcat -c
-./gradlew connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class="$1" --stacktrace > device-tests.log 2>&1
-status=$?
+status=0
+: > device-tests.log
+: > tests-ran.txt
+for cls in ${1//,/ }; do
+  ./gradlew connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class="$cls" --stacktrace >> device-tests.log 2>&1 || status=1
+  find app/build/outputs/androidTest-results -name 'TEST-*.xml' 2>/dev/null | while read -r f; do
+    grep -oE '<testsuite [^>]*>' "$f" | head -1
+    grep -oE '<testcase [^>]*>' "$f"
+    grep -oE '<failure message="[^"]{0,400}' "$f"
+  done >> tests-ran.txt
+done
 adb logcat -d -v threadtime > logcat.txt
 {
   echo "exit status: $status"
@@ -10,11 +19,7 @@ adb logcat -d -v threadtime > logcat.txt
   echo "--- instrumentation output"
   grep -nE "Process crashed|FAILED|AssertionError|Exception|Tests on|tests completed|> Task :app:connected" device-tests.log | head -60
   echo "--- tests that ran"
-  find app/build/outputs/androidTest-results -name 'TEST-*.xml' 2>/dev/null | while read -r f; do
-    grep -oE '<testsuite [^>]*>' "$f" | head -1
-    grep -oE '<testcase [^>]*>' "$f"
-    grep -oE '<failure message="[^"]{0,300}' "$f"
-  done
+  cat tests-ran.txt
 } > device-summary.txt
 msg=$(head -c 30000 device-summary.txt)
 msg="${msg//'%'/'%25'}"
