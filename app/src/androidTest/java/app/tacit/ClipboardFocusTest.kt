@@ -57,13 +57,15 @@ class ClipboardFocusTest {
         val marker = "tacit-marker-" + System.currentTimeMillis()
         ActivityScenario.launch(SearchActivity::class.java).use {
             instrumentation.waitForIdleSync()
-            device.pressHome()
-            device.waitForIdle()
             instrumentation.runOnMainSync {
                 context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("test", marker))
             }
             val description = context.getSystemService(ClipboardManager::class.java).primaryClipDescription
             assertTrue("test could not place a clip", description != null && description.hasMimeType(ClipDescription.MIMETYPE_TEXT_PLAIN))
+            Graph.clipboard.clear()
+            Graph.prefs.clipLastTimestamp = 0L
+            device.pressHome()
+            device.waitForIdle()
             context.startActivity(Intent(context, SearchActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             device.wait(Until.hasObject(By.res(context.packageName, "search_input")), 8000)
             val saved = waitFor(8000) { Graph.clipboard.all().any { it.text == marker } }
