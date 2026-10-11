@@ -18,6 +18,7 @@ class Prefs(context: Context) {
     var barAtBottom by flag("bar_bottom", true)
     var showClock by flag("clock", false)
     var showDate by flag("date", false)
+    var showBattery by flag("battery", false)
     var resultCount by number("result_count", 8)
     var kindOrder by text("kind_order", "APP,CONTACT,SETTING,SNIPPET,ACTION,FILE,CALCULATOR,WEB,CLIPBOARD")
     var contactsEnabled by flag("contacts", false)

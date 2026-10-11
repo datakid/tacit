@@ -61,6 +61,7 @@ class SettingsActivity : Activity() {
         toggle(R.string.bar_bottom, prefs.barAtBottom) { prefs.barAtBottom = it; restartSearch() }
         toggle(R.string.show_clock, prefs.showClock) { prefs.showClock = it; restartSearch() }
         toggle(R.string.show_date, prefs.showDate) { prefs.showDate = it; restartSearch() }
+        toggle(R.string.show_battery, prefs.showBattery) { prefs.showBattery = it; restartSearch() }
         toggle(R.string.wallpaper, prefs.showWallpaper) { prefs.showWallpaper = it; restartSearch() }
         number(R.string.result_count, prefs.resultCount, 3, 30) { prefs.resultCount = it }
 

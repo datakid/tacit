@@ -67,6 +67,9 @@
     <string name="bar_bottom">شريط البحث في الأسفل</string>
     <string name="show_clock">الساعة</string>
     <string name="show_date">التاريخ</string>
+    <string name="show_battery">البطارية</string>
+    <string name="battery_charging">تشحن</string>
+    <string name="battery_full">ممتلئة</string>
     <string name="wallpaper">الخلفية</string>
     <string name="result_count">عدد النتائج</string>
     <string name="unlimited">بلا حد</string>

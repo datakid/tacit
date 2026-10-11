@@ -2,7 +2,10 @@ package app.tacit.ui
 
 import android.app.Activity
 import android.app.AlertDialog
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.Rect
 import android.os.Build
 import android.os.Bundle
@@ -28,6 +31,7 @@ import android.window.OnBackInvokedDispatcher
 import app.tacit.Graph
 import app.tacit.R
 import app.tacit.TacitApp
+import app.tacit.system.BatteryStatus
 import app.tacit.actions.Actions
 import app.tacit.clip.ClipLock
 import app.tacit.core.ComposeInput
@@ -51,6 +55,8 @@ class SearchActivity : Activity(), RowCallbacks {
     private val clipLock by lazy { ClipLock(this, Graph.prefs) { runQuery(input.text.toString()) } }
     private var baseRows: List<SearchItem> = emptyList()
     private var fileRows: List<SearchItem> = emptyList()
+    private lateinit var batteryText: TextView
+    private var batteryRegistered = false
     private var currentQuery = ""
     private var currentScope = Scope.ALL
     private var backCallback: Any? = null
@@ -121,11 +127,17 @@ class SearchActivity : Activity(), RowCallbacks {
             format24Hour = "EEEE d MMMM"
             gravity = Gravity.CENTER
         }
+        batteryText = Ui.text(this, "", 14f, palette.muted).apply {
+            gravity = Gravity.CENTER
+            setOnClickListener { runCatching { startActivity(Intent(Intent.ACTION_POWER_USAGE_SUMMARY)) } }
+        }
         clockBlock.addView(clock)
         clockBlock.addView(date)
+        clockBlock.addView(batteryText)
         Ui.gone(clock, !Graph.prefs.showClock)
         Ui.gone(date, !Graph.prefs.showDate)
-        Ui.gone(clockBlock, !Graph.prefs.showClock && !Graph.prefs.showDate)
+        Ui.gone(batteryText, !Graph.prefs.showBattery)
+        Ui.gone(clockBlock, !Graph.prefs.showClock && !Graph.prefs.showDate && !Graph.prefs.showBattery)
 
         adapter = ResultAdapter(this, this)
         adapter.palette = palette
@@ -255,6 +267,29 @@ class SearchActivity : Activity(), RowCallbacks {
         super.onResume()
         applyRecentsPreference()
         showKeyboard()
+        if (Graph.prefs.showBattery) {
+            val filter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+            val sticky = if (Build.VERSION.SDK_INT >= 33) registerReceiver(batteryReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+            else registerReceiver(batteryReceiver, filter)
+            batteryRegistered = true
+            showBattery(sticky)
+        }
+    }
+
+    override fun onPause() {
+        if (batteryRegistered) {
+            unregisterReceiver(batteryReceiver)
+            batteryRegistered = false
+        }
+        super.onPause()
+    }
+
+    private val batteryReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) = showBattery(intent)
+    }
+
+    private fun showBattery(intent: Intent?) {
+        BatteryStatus.text(this, intent)?.let { batteryText.text = it }
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {

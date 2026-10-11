@@ -69,6 +69,9 @@
     <string name="bar_bottom">Search bar at bottom</string>
     <string name="show_clock">Clock</string>
     <string name="show_date">Date</string>
+    <string name="show_battery">Battery</string>
+    <string name="battery_charging">charging</string>
+    <string name="battery_full">full</string>
     <string name="wallpaper">Wallpaper</string>
     <string name="result_count">Results</string>
     <string name="unlimited">Unlimited</string>
