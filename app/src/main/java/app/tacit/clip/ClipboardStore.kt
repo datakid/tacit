@@ -57,8 +57,9 @@ class ClipboardStore(private val context: Context, private val prefs: Prefs) {
         val snapshot = reader.read() ?: return false
         val stamp = snapshot.stamp
         if (stamp != 0L && stamp == prefs.clipLastTimestamp) return false
+        val raw = snapshot.text() ?: return false
         prefs.clipLastTimestamp = stamp
-        val text = snapshot.text()?.trim().orEmpty()
+        val text = raw.trim()
         if (text.isEmpty() || text.length > 100_000) return false
         return add(text, snapshot.osSensitive)
     }

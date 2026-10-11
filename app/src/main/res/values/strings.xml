@@ -81,6 +81,12 @@
     <string name="files_permission_explain">All files access searches everything except Android/data and Android/obb. Or choose specific folders instead.</string>
     <string name="clipboard">Clipboard history</string>
     <string name="clipboard_limit">Android lets Tacit read the clipboard only while Tacit is open. Copies made between visits are missed.</string>
+    <string name="clip_off">Clipboard history is off. Turn it on in Settings.</string>
+    <string name="clip_empty">Nothing saved yet. Copy something in another app, then open Tacit.</string>
+    <string name="save_text_label">Save to Tacit</string>
+    <string name="save_text_saved">Saved to Tacit</string>
+    <string name="save_text_off">Turn on Clipboard history in Tacit settings first</string>
+    <string name="save_text_skipped">Not saved: too long or looks sensitive</string>
     <string name="clip_days">Keep for days (0 = forever)</string>
     <string name="clip_max">Keep items (0 = unlimited)</string>
     <string name="sensitive_policy">Sensitive items</string>

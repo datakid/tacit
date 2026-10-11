@@ -79,6 +79,12 @@
     <string name="files_permission_explain">الوصول إلى كل الملفات يبحث في كل شيء عدا Android/data و Android/obb. أو اختر مجلدات محددة بدلًا من ذلك.</string>
     <string name="clipboard">سجل الحافظة</string>
     <string name="clipboard_limit">يسمح أندرويد لـ Tacit بقراءة الحافظة فقط أثناء فتحه. ما يُنسخ بين المرات لا يُحفظ.</string>
+    <string name="clip_off">سجل الحافظة متوقف. فعّله من الإعدادات.</string>
+    <string name="clip_empty">لا شيء محفوظ بعد. انسخ شيئًا من تطبيق آخر ثم افتح Tacit.</string>
+    <string name="save_text_label">حفظ في Tacit</string>
+    <string name="save_text_saved">تم الحفظ في Tacit</string>
+    <string name="save_text_off">فعّل سجل الحافظة من إعدادات Tacit أولًا</string>
+    <string name="save_text_skipped">لم يُحفظ: طويل جدًا أو يبدو حساسًا</string>
     <string name="clip_days">الاحتفاظ بالأيام (0 = للأبد)</string>
     <string name="clip_max">الاحتفاظ بالعناصر (0 = بلا حد)</string>
     <string name="sensitive_policy">العناصر الحساسة</string>

@@ -52,6 +52,7 @@ class SearchActivity : Activity(), RowCallbacks {
     private var baseRows: List<SearchItem> = emptyList()
     private var fileRows: List<SearchItem> = emptyList()
     private var currentQuery = ""
+    private var currentScope = Scope.ALL
     private var backCallback: Any? = null
     private val refreshListener: () -> Unit = { if (::input.isInitialized) runQuery(input.text.toString()) }
 
@@ -261,10 +262,13 @@ class SearchActivity : Activity(), RowCallbacks {
         if (!hasFocus) return
         showKeyboard()
         if (Graph.prefs.clipboardEnabled) {
-            Graph.worker.post {
-                if (Graph.clipboard.captureIfNew() && currentQuery.isNotEmpty()) Graph.main.post { runQuery(input.text.toString()) }
-            }
+            Graph.worker.post(captureClip)
+            Graph.worker.postDelayed(captureClip, CLIP_RETRY_MS)
         }
+    }
+
+    private val captureClip = Runnable {
+        if (Graph.clipboard.captureIfNew()) Graph.main.post { if (currentQuery.isNotEmpty()) runQuery(input.text.toString()) }
     }
 
     override fun onStop() {
@@ -309,6 +313,7 @@ class SearchActivity : Activity(), RowCallbacks {
         currentQuery = raw
         val limit = Graph.prefs.resultCount.coerceIn(3, 30)
         val output = composer.compose(ComposeInput(raw, limit, defaultEngine(), ::clipboardItems))
+        currentScope = output.parsed.scope
         val sensitiveView = output.parsed.scope == Scope.CLIPBOARD
         baseRows = if (sensitiveView && clipLock.isLocked()) listOf(clipLock.lockedRow()) else crashRows(raw) + output.rows
         fileRows = emptyList()
@@ -346,7 +351,12 @@ class SearchActivity : Activity(), RowCallbacks {
         val display = if (Graph.prefs.barAtBottom) rows.asReversed() else rows
         adapter.selected = if (Graph.prefs.barAtBottom) (display.size - 1).coerceAtLeast(0) else 0
         adapter.submit(display)
-        emptyHint.visibility = View.GONE
+        if (currentScope == Scope.CLIPBOARD && rows.isEmpty()) {
+            emptyHint.text = getString(if (Graph.prefs.clipboardEnabled) R.string.clip_empty else R.string.clip_off)
+            emptyHint.visibility = View.VISIBLE
+        } else {
+            emptyHint.visibility = View.GONE
+        }
         if (Graph.prefs.barAtBottom) list.setSelection(display.size - 1)
     }
 
@@ -443,5 +453,9 @@ class SearchActivity : Activity(), RowCallbacks {
             ContactAction.TELEGRAM -> Actions.messengerNumber(this, number, Actions.TELEGRAM)
         }
         if (ok && Graph.prefs.closeAfterAction) input.setText("")
+    }
+
+    private companion object {
+        const val CLIP_RETRY_MS = 600L
     }
 }
