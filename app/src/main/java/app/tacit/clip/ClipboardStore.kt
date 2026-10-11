@@ -29,6 +29,12 @@ data class ClipEntry(
     val hidden: Boolean get() = sensitivity != Sensitivity.NONE
 }
 
+class ClipSnapshot(val stamp: Long, val osSensitive: Boolean, val text: () -> String?)
+
+fun interface ClipReader {
+    fun read(): ClipSnapshot?
+}
+
 class ClipboardStore(private val context: Context, private val prefs: Prefs) {
 
     private val SENSITIVE_KEY = "android.content.extra.IS_SENSITIVE"
@@ -44,20 +50,28 @@ class ClipboardStore(private val context: Context, private val prefs: Prefs) {
         ArrayList(list)
     }
 
-    fun captureIfNew(): Boolean {
+    private val platformReader = ClipReader { platformRead() }
+
+    fun captureIfNew(reader: ClipReader = platformReader): Boolean {
         if (!prefs.clipboardEnabled) return false
-        val clipboard = manager ?: return false
-        if (!clipboard.hasPrimaryClip()) return false
-        val description = clipboard.primaryClipDescription ?: return false
-        if (!description.hasMimeType(ClipDescription.MIMETYPE_TEXT_PLAIN) && !description.hasMimeType(ClipDescription.MIMETYPE_TEXT_HTML)) return false
-        val stamp = description.timestamp
+        val snapshot = reader.read() ?: return false
+        val stamp = snapshot.stamp
         if (stamp != 0L && stamp == prefs.clipLastTimestamp) return false
         prefs.clipLastTimestamp = stamp
-        val clip = clipboard.primaryClip ?: return false
-        if (clip.itemCount == 0) return false
-        val text = clip.getItemAt(0).coerceToText(context)?.toString()?.trim().orEmpty()
+        val text = snapshot.text()?.trim().orEmpty()
         if (text.isEmpty() || text.length > 100_000) return false
-        return add(text, osSensitive(description))
+        return add(text, snapshot.osSensitive)
+    }
+
+    private fun platformRead(): ClipSnapshot? {
+        val clipboard = manager ?: return null
+        if (!clipboard.hasPrimaryClip()) return null
+        val description = clipboard.primaryClipDescription ?: return null
+        if (!description.hasMimeType(ClipDescription.MIMETYPE_TEXT_PLAIN) && !description.hasMimeType(ClipDescription.MIMETYPE_TEXT_HTML)) return null
+        return ClipSnapshot(description.timestamp, osSensitive(description)) {
+            val clip = clipboard.primaryClip
+            if (clip == null || clip.itemCount == 0) null else clip.getItemAt(0).coerceToText(context)?.toString()
+        }
     }
 
     private fun osSensitive(description: ClipDescription): Boolean {
