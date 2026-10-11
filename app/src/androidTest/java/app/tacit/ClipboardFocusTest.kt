@@ -54,7 +54,7 @@ class ClipboardFocusTest {
 
     @Test
     fun clipCopiedWhileAwayIsSavedWhenTacitOpens() {
-        val marker = "clipboard test note " + System.currentTimeMillis()
+        val marker = "clipboard test note " + (1..8).map { ('a'..'z').random() }.joinToString("")
         ActivityScenario.launch(SearchActivity::class.java).use {
             instrumentation.waitForIdleSync()
             instrumentation.runOnMainSync {
