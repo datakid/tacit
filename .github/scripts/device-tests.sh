@@ -18,6 +18,8 @@ adb logcat -d -v threadtime > logcat.txt
   grep -n -A45 "FATAL EXCEPTION" logcat.txt | head -150
   echo "--- instrumentation output"
   grep -nE "Process crashed|FAILED|AssertionError|Exception|Tests on|tests completed|> Task :app:connected" device-tests.log | head -60
+  echo "--- clipboard service lines"
+  grep -iE "clipboard" logcat.txt | grep -iE "deny|denied|not focused|access" | head -20
   echo "--- tests that ran"
   cat tests-ran.txt
 } > device-summary.txt

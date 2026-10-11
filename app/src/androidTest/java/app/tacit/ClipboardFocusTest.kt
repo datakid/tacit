@@ -54,7 +54,7 @@ class ClipboardFocusTest {
 
     @Test
     fun clipCopiedWhileAwayIsSavedWhenTacitOpens() {
-        val marker = "tacit-marker-" + System.currentTimeMillis()
+        val marker = "clipboard test note " + System.currentTimeMillis()
         ActivityScenario.launch(SearchActivity::class.java).use {
             instrumentation.waitForIdleSync()
             instrumentation.runOnMainSync {
@@ -69,7 +69,7 @@ class ClipboardFocusTest {
             context.startActivity(Intent(context, SearchActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             device.wait(Until.hasObject(By.res(context.packageName, "search_input")), 8000)
             val saved = waitFor(8000) { Graph.clipboard.all().any { it.text == marker } }
-            assertTrue("clip copied while away was not saved on return; saved=${Graph.clipboard.all().map { it.text }}", saved)
+            assertTrue("clip copied while away was not saved on return; saved=${Graph.clipboard.all().map { it.text }} stamp=${Graph.prefs.clipLastTimestamp}", saved)
             assertEquals(1, Graph.clipboard.all().count { it.text == marker })
         }
     }
