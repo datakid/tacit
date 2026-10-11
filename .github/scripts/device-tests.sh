@@ -8,7 +8,7 @@ for cls in ${1//,/ }; do
   find app/build/outputs/androidTest-results -name 'TEST-*.xml' 2>/dev/null | while read -r f; do
     grep -oE '<testsuite [^>]*>' "$f" | head -1
     grep -oE '<testcase [^>]*>' "$f"
-    grep -oE '<failure message="[^"]{0,400}' "$f"
+    grep -A6 '<failure' "$f" | cut -c1-300
   done >> tests-ran.txt
 done
 adb logcat -d -v threadtime > logcat.txt
