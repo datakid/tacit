@@ -52,6 +52,19 @@
     <string name="imported_rows">%1$d rows imported</string>
 
     <string name="snippets">Snippets</string>
+    <string name="quicklinks">Quicklinks</string>
+    <string name="ql_name">Name</string>
+    <string name="ql_aliases">Aliases (comma separated)</string>
+    <string name="ql_type_url">Link</string>
+    <string name="ql_type_setting">Setting</string>
+    <string name="ql_type_app">App</string>
+    <string name="ql_url_hint" translatable="false">https://example.com/?q={query}</string>
+    <string name="ql_url_help">Put {query} where the text typed after the name should go.</string>
+    <string name="ql_choose">Choose…</string>
+    <string name="ql_invalid_url">That link is not allowed. Use http, https, mailto, tel or geo.</string>
+    <string name="ql_pick_first">Choose a target first</string>
+    <string name="ql_name_required">Enter a name</string>
+    <string name="ql_empty">No quicklinks yet. Tap Add.</string>
     <string name="snippet_trigger">Trigger</string>
     <string name="snippet_title">Title</string>
     <string name="snippet_body">Text</string>

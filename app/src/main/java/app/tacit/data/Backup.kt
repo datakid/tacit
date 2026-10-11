@@ -1,6 +1,7 @@
 package app.tacit.data
 
 import app.tacit.Graph
+import app.tacit.core.QuicklinkType
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -27,6 +28,12 @@ object Backup {
             snippets.put(JSONObject().put("id", snippet.id).put("trigger", snippet.trigger).put("title", snippet.title).put("body", snippet.body))
         }
         root.put("snippets", snippets)
+        val quicklinks = JSONArray()
+        for (link in Graph.quicklinks.all()) {
+            quicklinks.put(JSONObject().put("id", link.id).put("name", link.name).put("type", link.type.name)
+                .put("target", link.target).put("detail", link.detail))
+        }
+        root.put("quicklinks", quicklinks)
         return root.toString(2)
     }
 
@@ -62,6 +69,15 @@ object Backup {
                 Snippet(item.optString("id").ifEmpty { Graph.snippets.newId() }, item.optString("trigger"), item.optString("title"), item.optString("body"))
             }
             Graph.snippets.replaceAll(list)
+        }
+        root.optJSONArray("quicklinks")?.let { array ->
+            val list = (0 until array.length()).mapNotNull { index ->
+                val item = array.getJSONObject(index)
+                val type = runCatching { QuicklinkType.valueOf(item.optString("type")) }.getOrNull() ?: return@mapNotNull null
+                Quicklink(item.optString("id").ifEmpty { Graph.quicklinks.newId() }, item.optString("name"), type,
+                    item.optString("target"), item.optString("detail"))
+            }
+            Graph.quicklinks.replaceAll(list)
         }
     }
 }

@@ -102,6 +102,8 @@
             android:label="@string/aliases" android:windowSoftInputMode="adjustResize" />
         <activity android:name=".ui.SnippetsActivity" android:exported="false"
             android:label="@string/snippets" />
+        <activity android:name=".ui.QuicklinksActivity" android:exported="false"
+            android:label="@string/quicklinks" android:windowSoftInputMode="adjustResize" />
 
         <activity android:name=".system.SaveTextActivity" android:exported="true"
             android:label="@string/save_text_label" android:taskAffinity=""

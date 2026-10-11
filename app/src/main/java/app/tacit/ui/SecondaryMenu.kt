@@ -24,7 +24,8 @@ object SecondaryMenu {
             entries.add(MenuEntry(activity.getString(labelRes), run))
         }
         val persistent = item.kind in setOf(ItemKind.APP, ItemKind.CONTACT, ItemKind.SETTING, ItemKind.SNIPPET, ItemKind.ACTION) &&
-            !item.key.startsWith("num:") && item.key != "url" && item.key != "mail" && item.key != "crash"
+            !item.key.startsWith("num:") && item.key != "url" && item.key != "mail" && item.key != "crash" &&
+            !(item.key.startsWith("ql:") && item.key.endsWith(":q"))
 
         if (persistent) {
             add(R.string.menu_alias) { editAlias(activity, item, changed) }
@@ -67,6 +68,9 @@ object SecondaryMenu {
                 }
             }
             ItemKind.SNIPPET -> add(R.string.menu_edit) { activity.startActivity(Intent(activity, SnippetsActivity::class.java)) }
+            ItemKind.ACTION -> if (item.key.startsWith("ql:")) add(R.string.menu_edit) {
+                activity.startActivity(Intent(activity, QuicklinksActivity::class.java))
+            }
             ItemKind.CALCULATOR, ItemKind.WEB -> add(R.string.menu_copy) {
                 Graph.clipboard.copy(if (item.kind == ItemKind.WEB) item.label else item.payload, false)
             }

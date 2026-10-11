@@ -63,6 +63,7 @@ object Actions {
                 true
             }
             payload == "crash|share" -> shareCrash(activity)
+            payload.startsWith("ql|") -> QuicklinkLauncher.launch(activity, payload.removePrefix("ql|"), bounds)
             payload.startsWith("tacit|") -> start(activity, Intent(activity, Class.forName(payload.removePrefix("tacit|"))))
             else -> false
         }

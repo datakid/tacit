@@ -391,7 +391,7 @@ class SearchActivity : Activity(), RowCallbacks {
     private fun runQueryTraced(raw: String) {
         currentQuery = raw
         val limit = Graph.prefs.resultCount.coerceIn(3, 30)
-        val output = composer.compose(ComposeInput(raw, limit, defaultEngine(), ::clipboardItems))
+        val output = composer.compose(ComposeInput(raw, limit, defaultEngine(), ::clipboardItems, Graph.quicklinkSource::queryRows))
         currentScope = output.parsed.scope
         val sensitiveView = output.parsed.scope == Scope.CLIPBOARD
         baseRows = if (sensitiveView && clipLock.isLocked()) listOf(clipLock.lockedRow()) else crashRows(raw) + output.rows

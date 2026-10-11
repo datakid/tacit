@@ -12,10 +12,12 @@ import app.tacit.core.PrefixGrammar
 import app.tacit.core.SearchEngine
 import app.tacit.core.SearchItem
 import app.tacit.data.AliasStore
+import app.tacit.data.QuicklinkStore
 import app.tacit.data.SnippetStore
 import app.tacit.files.FileIndex
 import app.tacit.sources.AppSource
 import app.tacit.sources.ContactSource
+import app.tacit.sources.QuicklinkSource
 import app.tacit.sources.SettingSource
 import app.tacit.sources.SnippetSource
 import app.tacit.ui.IconCache
@@ -38,6 +40,7 @@ object Graph {
 
     val aliases by lazy { AliasStore(context) }
     val snippets by lazy { SnippetStore(context) }
+    val quicklinks by lazy { QuicklinkStore(context) }
     val clipboard by lazy { ClipboardStore(context, prefs) }
     val files by lazy { FileIndex(context, prefs) }
     val icons by lazy { IconCache(context, prefs) }
@@ -46,6 +49,7 @@ object Graph {
     val contacts by lazy { ContactSource(context, prefs) }
     val settings by lazy { SettingSource(context, prefs) }
     val snippetSource by lazy { SnippetSource(snippets) }
+    val quicklinkSource by lazy { QuicklinkSource(quicklinks) }
 
     private val listeners = ArrayList<() -> Unit>()
     private val rebuildQueued = AtomicBoolean(false)
@@ -94,7 +98,15 @@ object Graph {
         if (prefs.contactsEnabled) contacts.reload() else contacts.clear()
         settings.reload(apps.items())
         snippetSource.reload()
+        quicklinkSource.reload()
         rebuild()
+    }
+
+    fun reloadQuicklinks() {
+        worker.post {
+            quicklinkSource.reload()
+            rebuild()
+        }
     }
 
     fun requestRebuild() {
@@ -133,7 +145,7 @@ object Graph {
         val pins = prefs.pins
         val hidden = prefs.hidden
         val combined = ArrayList<SearchItem>(4096)
-        val sourceItems = apps.items() + contacts.items() + settings.items() + snippetSource.items()
+        val sourceItems = apps.items() + contacts.items() + settings.items() + snippetSource.items() + quicklinkSource.items()
         for (item in sourceItems) {
             if (item.key in hidden) continue
             item.withAliases(aliasMap[item.key].orEmpty())

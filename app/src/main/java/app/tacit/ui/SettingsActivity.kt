@@ -107,6 +107,7 @@ class SettingsActivity : Activity() {
         textPref(R.string.kind_order, prefs.kindOrder) { prefs.kindOrder = it; Graph.applyPrefs() }
         action(getString(R.string.aliases)) { startActivity(Intent(this, AliasesActivity::class.java)) }
         action(getString(R.string.snippets)) { startActivity(Intent(this, SnippetsActivity::class.java)) }
+        action(getString(R.string.quicklinks)) { startActivity(Intent(this, QuicklinksActivity::class.java)) }
         action(getString(R.string.hidden_items, prefs.hidden.size)) { showHidden() }
 
         section(R.string.sec_actions)

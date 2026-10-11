@@ -6,7 +6,8 @@ class ComposeInput(
     val raw: String,
     val limit: Int,
     val defaultEngine: WebEngine,
-    val clipboardItems: () -> List<SearchItem>
+    val clipboardItems: () -> List<SearchItem>,
+    val quicklinkRows: (String) -> List<SearchItem> = { emptyList() }
 )
 
 class ComposeOutput(val rows: List<SearchItem>, val parsed: ParsedQuery, val wantsFiles: Boolean)
@@ -45,6 +46,7 @@ class ResultComposer(
         val calc = if (recognized == null && calculator.looksLikeMath(text)) calculatorRow(text) else null
         val matches = engine.search(text, input.limit)
         val exactAlias = matches.firstOrNull()?.let { it.score >= Tier.ALIAS_EXACT * Tier.SCALE } == true
+        rows.addAll(input.quicklinkRows(text))
         if (calc != null && !exactAlias) rows.add(calc)
         rows.addAll(recognizedRows(recognized))
         for (match in matches) if (rows.size < input.limit) rows.add(match.item)
