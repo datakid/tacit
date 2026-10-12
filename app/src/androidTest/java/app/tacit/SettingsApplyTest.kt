@@ -87,7 +87,7 @@ class SettingsApplyTest {
         return false
     }
 
-    private fun clockPattern() = By.text(java.util.regex.Pattern.compile("\\d{1,2}:\\d{2}"))
+    private fun clockPattern() = By.clazz(TextClock::class.java).pkg(context.packageName)
 
     @Test
     fun clockAndDateAppearWhenEnabledWhileAway() {
@@ -141,6 +141,7 @@ class SettingsApplyTest {
 
     @Test
     fun typedTextSurvivesALookChange() {
+        prefs.closeAfterAction = false
         ActivityScenario.launch(SearchActivity::class.java).use { scenario ->
             scenario.onActivity { it.findViewById<EditText>(R.id.search_input).setText("abc") }
             away(scenario)
