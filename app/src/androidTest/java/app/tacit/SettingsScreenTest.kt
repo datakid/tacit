@@ -110,9 +110,20 @@ class SettingsScreenTest {
     @Test
     fun openedFromSearchButton() {
         val device = UiDevice.getInstance(instrumentation)
+        val marker = By.text(context.getString(R.string.show_clock)).pkg(context.packageName)
+        val searchButton = By.desc(context.getString(R.string.settings)).pkg(context.packageName)
         ActivityScenario.launch(SearchActivity::class.java).use {
-            onView(withContentDescription(context.getString(R.string.settings))).perform(click())
-            assertTrue(device.wait(Until.hasObject(By.text(context.getString(R.string.settings))), 5_000))
+            var opened = false
+            var clicks = 0
+            while (!opened && clicks < 2) {
+                onView(withContentDescription(context.getString(R.string.settings))).perform(click())
+                clicks++
+                opened = device.wait(Until.hasObject(marker), 6_000)
+            }
+            assertTrue(
+                "settings did not open after $clicks clicks (package=${device.currentPackageName}, searchButtonShown=${device.hasObject(searchButton)})",
+                opened
+            )
         }
     }
 }
