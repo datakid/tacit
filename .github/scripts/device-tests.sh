@@ -36,18 +36,18 @@ for cls in ${1//,/ }; do
     wait "$gpid" || status=1
   fi
   find app/build/outputs/androidTest-results -name 'TEST-*.xml' 2>/dev/null | while read -r f; do
-    grep -oE '<testsuite [^>]*>' "$f" | head -1
-    grep -oE '<testcase [^>]*>' "$f"
-    grep -A6 '<failure' "$f" | cut -c1-300
+    grep -oE '<testsuite [^>]*>' "$f" | head -1 | sed -E 's/.*name="app\.tacit\.([^"]*)".*tests="([0-9]+)".*failures="([0-9]+)".*errors="([0-9]+)".*skipped="([0-9]+)".*time="([^"]*)".*/\1 tests=\2 failures=\3 errors=\4 skipped=\5 time=\6s/'
+    grep -oE '<testcase [^>]*>' "$f" | sed -E 's/.*name="([^"]*)".*time="([0-9.]+)".*/\1 \2/' | awk '$2 >= 5 {print "  slow: " $0}'
+    grep -A5 '<failure' "$f" | cut -c1-260
   done >> tests-ran.txt
 done
 adb logcat -d -v threadtime > logcat.txt
 {
   echo "exit status: $status"
   echo "--- timeout diagnostics"
-  head -c 6000 timeout-diagnostics.txt 2>/dev/null
+  head -c 1200 timeout-diagnostics.txt 2>/dev/null
   echo "--- tests that ran"
-  head -c 12000 tests-ran.txt
+  head -c 2600 tests-ran.txt
   echo "--- crash in logcat"
   grep -n -A45 "FATAL EXCEPTION" logcat.txt | head -100
   echo "--- clipboard service lines"

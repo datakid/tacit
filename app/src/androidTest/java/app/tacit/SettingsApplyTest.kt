@@ -286,6 +286,17 @@ class SettingsApplyTest {
         }
     }
 
+    private fun backToSearch(): Boolean {
+        val searchMarker = By.desc(context.getString(R.string.settings)).pkg(context.packageName)
+        val settingsMarker = By.text(context.getString(R.string.show_clock)).pkg(context.packageName)
+        repeat(3) {
+            device.pressBack()
+            if (device.wait(Until.hasObject(searchMarker), 4000)) return true
+            if (!device.hasObject(settingsMarker)) return device.wait(Until.hasObject(searchMarker), 4000)
+        }
+        return false
+    }
+
     @Test
     fun changesMadeInSettingsShowOnSearchAfterBack() {
         prefs.theme = "dark"
@@ -299,9 +310,13 @@ class SettingsApplyTest {
             clickText(context.getString(R.string.theme))
             clickText(context.getString(R.string.theme_light))
             assertTrue("settings did not turn white", waitForBackdrop(Color.WHITE))
-            device.pressBack()
+            assertTrue("did not get back to search", backToSearch())
             val shown = waitForShownClocks(scenario, 1)
-            assertEquals("clock did not appear on search (showClock=${prefs.showClock})", 1, shown)
+            var state = ""
+            scenario.onActivity {
+                state = "destroyed=${it.isDestroyed} finishing=${it.isFinishing} id=${System.identityHashCode(it)} clocks=${views(it).count { v -> v is TextClock }}"
+            }
+            assertEquals("clock did not appear on search (showClock=${prefs.showClock}, $state)", 1, shown)
             assertTrue("search did not turn white", waitForBackdrop(Color.WHITE))
             assertTrue(prefs.showClock)
         }
