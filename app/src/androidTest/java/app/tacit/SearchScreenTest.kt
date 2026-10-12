@@ -14,7 +14,6 @@ import androidx.test.espresso.action.ViewActions.replaceText
 import androidx.test.espresso.intent.Intents
 import androidx.test.espresso.intent.Intents.intended
 import androidx.test.espresso.intent.Intents.intending
-import androidx.test.espresso.intent.matcher.IntentMatchers.anyIntent
 import androidx.test.espresso.intent.matcher.IntentMatchers.hasAction
 import androidx.test.espresso.intent.matcher.IntentMatchers.hasData
 import androidx.test.espresso.matcher.ViewMatchers.withId
@@ -52,7 +51,7 @@ class SearchScreenTest {
         Graph.applyPrefs()
         Graph.useItemsForTesting(Fixtures.all())
         Intents.init()
-        intending(anyIntent()).respondWith(Instrumentation.ActivityResult(Activity.RESULT_OK, null))
+        intending(ExternalIntents.matcher()).respondWith(Instrumentation.ActivityResult(Activity.RESULT_OK, null))
         scenario = ActivityScenario.launch(SearchActivity::class.java)
         InstrumentationRegistry.getInstrumentation().waitForIdleSync()
     }

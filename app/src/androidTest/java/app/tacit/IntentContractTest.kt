@@ -8,7 +8,6 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.espresso.intent.Intents
 import androidx.test.espresso.intent.Intents.intended
 import androidx.test.espresso.intent.Intents.intending
-import androidx.test.espresso.intent.matcher.IntentMatchers.anyIntent
 import androidx.test.espresso.intent.matcher.IntentMatchers.hasAction
 import androidx.test.espresso.intent.matcher.IntentMatchers.hasData
 import androidx.test.espresso.intent.matcher.IntentMatchers.hasPackage
@@ -33,7 +32,7 @@ class IntentContractTest {
         Graph.prefs.directCall = false
         Graph.prefs.countryCode = "20"
         Intents.init()
-        intending(anyIntent()).respondWith(Instrumentation.ActivityResult(Activity.RESULT_OK, null))
+        intending(ExternalIntents.matcher()).respondWith(Instrumentation.ActivityResult(Activity.RESULT_OK, null))
         scenario = ActivityScenario.launch(SearchActivity::class.java)
     }
 

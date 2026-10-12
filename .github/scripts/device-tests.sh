@@ -44,10 +44,10 @@ done
 adb logcat -d -v threadtime > logcat.txt
 {
   echo "exit status: $status"
-  echo "--- tests that ran"
-  cat tests-ran.txt
   echo "--- timeout diagnostics"
-  cat timeout-diagnostics.txt 2>/dev/null
+  head -c 6000 timeout-diagnostics.txt 2>/dev/null
+  echo "--- tests that ran"
+  head -c 12000 tests-ran.txt
   echo "--- crash in logcat"
   grep -n -A45 "FATAL EXCEPTION" logcat.txt | head -100
   echo "--- clipboard service lines"
