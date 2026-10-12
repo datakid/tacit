@@ -42,6 +42,21 @@ jobs:
           set -o pipefail
           ./gradlew assembleRelease --stacktrace --continue 2>&1 | tee build-release.log
 
+      - name: Perf and size numbers
+        if: always()
+        run: |
+          {
+            grep -h -o 'TACIT_KEYSTROKE_JVM[^<]*' app/build/test-results/testDebugUnitTest/*.xml | head -2
+            for f in app/build/outputs/apk/debug/*.apk app/build/outputs/apk/release/*.apk; do
+              [ -f "$f" ] && echo "$(stat -c %s "$f") bytes $(basename "$f")"
+            done
+          } > numbers.txt
+          msg=$(head -c 1500 numbers.txt)
+          msg="${msg//'%'/'%25'}"
+          msg="${msg//$'\r'/'%0D'}"
+          msg="${msg//$'\n'/'%0A'}"
+          echo "::notice title=Perf and size::$msg"
+
       - name: Benchmark module
         if: always()
         run: |
