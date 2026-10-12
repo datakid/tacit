@@ -87,7 +87,16 @@ class SettingsApplyTest {
         return false
     }
 
-    private fun clockPattern() = By.clazz(TextClock::class.java).pkg(context.packageName)
+    private fun waitForShownClocks(scenario: ActivityScenario<*>, expected: Int, millis: Long = 8000): Int {
+        val end = System.currentTimeMillis() + millis
+        var seen = -1
+        while (System.currentTimeMillis() < end) {
+            scenario.onActivity { seen = shownClocks(it) }
+            if (seen == expected) return seen
+            Thread.sleep(250)
+        }
+        return seen
+    }
 
     @Test
     fun clockAndDateAppearWhenEnabledWhileAway() {
@@ -280,9 +289,9 @@ class SettingsApplyTest {
     @Test
     fun changesMadeInSettingsShowOnSearchAfterBack() {
         prefs.theme = "dark"
-        ActivityScenario.launch(SearchActivity::class.java).use {
+        ActivityScenario.launch(SearchActivity::class.java).use { scenario ->
             assertTrue("search did not start black", waitForBackdrop(Color.BLACK))
-            assertFalse(device.hasObject(clockPattern()))
+            scenario.onActivity { assertEquals(0, shownClocks(it)) }
             val button = device.wait(Until.findObject(By.desc(context.getString(R.string.settings))), 5000)
             assertNotNull("settings button missing", button)
             button.click()
@@ -291,7 +300,8 @@ class SettingsApplyTest {
             clickText(context.getString(R.string.theme_light))
             assertTrue("settings did not turn white", waitForBackdrop(Color.WHITE))
             device.pressBack()
-            assertTrue("clock did not appear on search", device.wait(Until.hasObject(clockPattern()), 8000))
+            val shown = waitForShownClocks(scenario, 1)
+            assertEquals("clock did not appear on search (showClock=${prefs.showClock})", 1, shown)
             assertTrue("search did not turn white", waitForBackdrop(Color.WHITE))
             assertTrue(prefs.showClock)
         }
