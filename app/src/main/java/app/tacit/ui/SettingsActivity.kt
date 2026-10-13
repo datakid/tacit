@@ -304,12 +304,14 @@ class SettingsActivity : Activity() {
 
     private fun header(value: String) {
         container.addView(Ui.text(this, value, 26f, palette.foreground, bold = true).apply {
+            textAlignment = View.TEXT_ALIGNMENT_VIEW_START
             setPadding(0, 0, 0, Ui.dp(context, 8))
         })
     }
 
     private fun section(label: Int) {
         container.addView(Ui.text(this, getString(label).uppercase(), 12f, palette.muted, bold = true).apply {
+            textAlignment = View.TEXT_ALIGNMENT_VIEW_START
             setPadding(0, Ui.dp(context, 24), 0, Ui.dp(context, 6))
         })
     }
@@ -329,8 +331,16 @@ class SettingsActivity : Activity() {
         row.isClickable = true
         row.isFocusable = true
         val texts = Ui.column(this)
-        texts.addView(Ui.text(this, label, 16f, palette.foreground).apply { maxLines = 2 })
-        if (value != null) texts.addView(Ui.text(this, value, 13f, palette.muted))
+        texts.addView(Ui.text(this, label, 16f, palette.foreground).apply {
+            maxLines = 2
+            textAlignment = View.TEXT_ALIGNMENT_VIEW_START
+        })
+        if (value != null) {
+            texts.addView(Ui.text(this, value, 13f, palette.muted).apply {
+                textAlignment = View.TEXT_ALIGNMENT_VIEW_START
+                textDirection = View.TEXT_DIRECTION_FIRST_STRONG_LTR
+            })
+        }
         row.addView(texts, Ui.weight())
         container.addView(row, Ui.matchWrap())
         return row
