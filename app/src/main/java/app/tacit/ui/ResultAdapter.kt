@@ -125,6 +125,9 @@ class ResultAdapter(
             slot.addView(appIcon, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
 
             title.typeface = mediumFace
+            title.textAlignment = View.TEXT_ALIGNMENT_VIEW_START
+            subtitle.textAlignment = View.TEXT_ALIGNMENT_VIEW_START
+            subtitle.textDirection = View.TEXT_DIRECTION_FIRST_STRONG_LTR
             val texts = Ui.column(context)
             texts.setPaddingRelative(dp12, 0, dp4, 0)
             texts.addView(title)

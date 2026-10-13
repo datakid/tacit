@@ -233,6 +233,7 @@ class SearchActivity : Activity(), RowCallbacks {
                 InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_FILTER or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
             }
             background = null
+            textAlignment = View.TEXT_ALIGNMENT_VIEW_START
             setPaddingRelative(Ui.dp(context, 12), Ui.dp(context, 14), Ui.dp(context, 8), Ui.dp(context, 14))
             contentDescription = getString(R.string.search_hint)
             setOnEditorActionListener { _, actionId, event ->

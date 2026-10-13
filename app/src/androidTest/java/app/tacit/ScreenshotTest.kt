@@ -11,6 +11,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.WindowInsets
 import android.widget.ListView
+import android.widget.ScrollView
 import androidx.test.core.app.ActivityScenario
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.action.ViewActions.replaceText
@@ -19,12 +20,19 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.UiDevice
 import app.tacit.core.ItemKind
+import app.tacit.core.QuicklinkType
 import app.tacit.core.SearchItem
+import app.tacit.data.Quicklink
+import app.tacit.data.Snippet
 import app.tacit.sources.ContactInfo
 import app.tacit.ui.ContactAction
 import app.tacit.ui.ResultAdapter
 import app.tacit.ui.RowCallbacks
+import app.tacit.ui.AliasesActivity
+import app.tacit.ui.QuicklinksActivity
 import app.tacit.ui.SearchActivity
+import app.tacit.ui.SettingsActivity
+import app.tacit.ui.SnippetsActivity
 import app.tacit.ui.Ui
 import org.junit.After
 import org.junit.Assert.assertTrue
@@ -52,15 +60,15 @@ class ScreenshotTest {
         return ParcelFileDescriptor.AutoCloseInputStream(descriptor).use { String(it.readBytes()) }
     }
 
-    private fun contact(name: String, number: String) =
+    private fun contact(name: String, number: String, business: Long? = null) =
         SearchItem("contact:$name", ItemKind.CONTACT, name, number,
-            extra = ContactInfo(name, 1L, name, listOf(number), number, 7L, 9L, false))
+            extra = ContactInfo(name, 1L, name, listOf(number), number, 7L, business, false))
 
     private fun items(): List<SearchItem> {
         val rows = ArrayList<SearchItem>()
         rows.add(contact("Asmaa Gouda", "+20 100 123 4567"))
         rows.add(contact("أسماء جودة", "+20 111 765 4321"))
-        rows.add(contact("Ahmed Galal", "+20 122 000 1122"))
+        rows.add(contact("Ahmed Galal", "+20 122 000 1122", business = 9L))
         rows.add(SearchItem("set:wifi", ItemKind.SETTING, "Wi-Fi settings", "Settings", payload = "x"))
         rows.add(SearchItem("file:/r", ItemKind.FILE, "Q3 report.pdf", "~/Documents"))
         rows.add(SearchItem("file:/d", ItemKind.FILE, "Documents", "~/"))
@@ -91,6 +99,8 @@ class ScreenshotTest {
 
     @After
     fun tearDown() {
+        shell("wm size reset")
+        shell("wm density reset")
         if (Build.VERSION.SDK_INT >= 33) {
             context.getSystemService(LocaleManager::class.java).applicationLocales = LocaleList.getEmptyLocaleList()
         }
@@ -133,8 +143,61 @@ class ScreenshotTest {
         }
     }
 
-    private fun capture(label: String, theme: String, arabic: Boolean, typed: Boolean) {
+    private fun scrollToEnd(activity: Activity) {
+        val root = activity.window.decorView
+        val queue = ArrayDeque<View>()
+        queue.add(root)
+        while (queue.isNotEmpty()) {
+            val view = queue.removeFirst()
+            if (view is ScrollView) {
+                view.fullScroll(View.FOCUS_DOWN)
+                return
+            }
+            if (view is ViewGroup) for (i in 0 until view.childCount) queue.add(view.getChildAt(i))
+        }
+    }
+
+    private fun seed() {
+        Graph.snippets.replaceAll(listOf(
+            Snippet("1", ";sig", "Email signature", "Best regards,\nAsmaa"),
+            Snippet("2", ";addr", "Home address", "12 Nile Street, Cairo"),
+            Snippet("3", ";date", "Today", "{date}")
+        ))
+        Graph.quicklinks.replaceAll(listOf(
+            Quicklink("a1", "GitHub", QuicklinkType.URL, "https://github.com/{query}", "github.com"),
+            Quicklink("a2", "Maps", QuicklinkType.URL, "https://maps.example.com/?q={query}", "maps.example.com"),
+            Quicklink("a3", "Wi-Fi", QuicklinkType.SETTING, "android.settings.WIFI_SETTINGS", "Wi-Fi settings")
+        ))
+        Graph.aliases.setMany(mapOf("contact:Asmaa Gouda" to listOf("ag", "asma"), "set:wifi" to listOf("wf")))
+    }
+
+    private fun screens(label: String) {
+        seed()
+        for ((name, type) in listOf(
+            "settings" to SettingsActivity::class.java,
+            "quicklinks" to QuicklinksActivity::class.java,
+            "snippets" to SnippetsActivity::class.java,
+            "aliases" to AliasesActivity::class.java
+        )) {
+            ActivityScenario.launch(type).use { scenario ->
+                settle()
+                shoot("$name-$label")
+                if (name == "settings") {
+                    scenario.onActivity { scrollToEnd(it) }
+                    settle()
+                    shoot("$name-end-$label")
+                }
+            }
+        }
+    }
+
+    private fun capture(label: String, theme: String, arabic: Boolean, typed: Boolean, wide: Boolean = true) {
         Graph.prefs.theme = theme
+        if (wide) {
+            shell("wm size 1080x2400")
+            shell("wm density 420")
+            Thread.sleep(1500)
+        }
         if (arabic) {
             assumeTrue(Build.VERSION.SDK_INT >= 33)
             context.getSystemService(LocaleManager::class.java).applicationLocales = LocaleList.forLanguageTags("ar")
@@ -154,6 +217,7 @@ class ScreenshotTest {
             settle()
             shoot("rows-$label")
         }
+        if (wide) screens(label)
     }
 
     @Test
@@ -167,4 +231,7 @@ class ScreenshotTest {
 
     @Test
     fun arabicDark() = capture("rtl-dark", "dark", arabic = true, typed = false)
+
+    @Test
+    fun narrow() = capture("narrow", "light", arabic = false, typed = true, wide = false)
 }
