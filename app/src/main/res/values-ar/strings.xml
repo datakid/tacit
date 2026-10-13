@@ -3,6 +3,7 @@
     <string name="widget_label">بحث Tacit</string>
     <string name="search_hint">بحث</string>
     <string name="settings">الإعدادات</string>
+    <string name="clear">مسح</string>
     <string name="copied">تم النسخ</string>
     <string name="hidden_clip">حساس، مخفي</string>
 

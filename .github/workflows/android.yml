@@ -146,4 +146,19 @@ jobs:
           arch: x86_64
           target: google_apis
           disable-animations: true
-          script: bash .github/scripts/device-tests.sh app.tacit.SettingsApplyTest,app.tacit.SettingsScreenTest,app.tacit.ClipboardCaptureTest,app.tacit.ClipboardFocusTest,app.tacit.BatteryDisplayTest,app.tacit.QuicklinksTest,app.tacit.SearchScreenTest
+          script: bash .github/scripts/device-tests.sh app.tacit.SettingsApplyTest,app.tacit.SettingsScreenTest,app.tacit.ClipboardCaptureTest,app.tacit.ClipboardFocusTest,app.tacit.BatteryDisplayTest,app.tacit.QuicklinksTest,app.tacit.SearchScreenTest,app.tacit.ResultAdapterTest,app.tacit.ScreenshotTest
+
+      - name: Publish screenshots
+        if: always() && matrix.api == 35 && github.ref == 'refs/heads/beta'
+        env:
+          TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          [ -d tacit-shots ] && [ -n "$(ls tacit-shots)" ] || { echo "no screenshots"; exit 0; }
+          cd tacit-shots
+          git init -q -b ci-screenshots
+          git config user.name "tacit-ci"
+          git config user.email "ci@users.noreply.github.com"
+          git add .
+          git commit -q -m "Screenshots from ${GITHUB_SHA}"
+          git push -q --force "https://x-access-token:${TOKEN}@github.com/${REPO}.git" ci-screenshots

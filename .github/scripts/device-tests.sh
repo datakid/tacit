@@ -42,6 +42,8 @@ for cls in ${1//,/ }; do
   done >> tests-ran.txt
 done
 adb logcat -d -v threadtime > logcat.txt
+rm -rf tacit-shots
+adb pull /sdcard/tacit-shots tacit-shots >/dev/null 2>&1 || true
 {
   echo "exit status: $status"
   echo "--- timeout diagnostics"

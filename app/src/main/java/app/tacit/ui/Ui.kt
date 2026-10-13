@@ -2,11 +2,13 @@ package app.tacit.ui
 
 import android.app.Activity
 import android.content.Context
+import android.content.res.ColorStateList
 import android.content.res.Configuration
 import android.os.Build
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.RippleDrawable
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
@@ -107,6 +109,15 @@ object Ui {
         cornerRadius = dp(context, radiusDp).toFloat()
         setColor(palette.surface)
         setStroke(dp(context, 1), palette.line)
+    }
+
+    fun ripple(context: Context, palette: Palette, radiusDp: Int = 0, oval: Boolean = false): RippleDrawable {
+        val mask = GradientDrawable().apply {
+            if (oval) shape = GradientDrawable.OVAL else cornerRadius = dp(context, radiusDp).toFloat()
+            setColor(Color.BLACK)
+        }
+        val color = (palette.muted and 0x00FFFFFF) or 0x33000000
+        return RippleDrawable(ColorStateList.valueOf(color), null, mask)
     }
 
     fun chip(context: Context, palette: Palette, label: String, onClick: () -> Unit): TextView =

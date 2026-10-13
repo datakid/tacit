@@ -24,6 +24,7 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ListView
 import android.widget.TextClock
@@ -181,8 +182,7 @@ class SearchActivity : Activity(), RowCallbacks {
         Ui.gone(batteryText, !current.battery)
         Ui.gone(clockBlock, !current.clock && !current.date && !current.battery)
 
-        adapter = ResultAdapter(this, this)
-        adapter.palette = palette
+        adapter = ResultAdapter(this, this, palette)
         list = ListView(this).apply {
             this.adapter = this@SearchActivity.adapter
             divider = null
@@ -203,6 +203,22 @@ class SearchActivity : Activity(), RowCallbacks {
             visibility = View.GONE
         }
 
+        val mutedIcons = IconSet(this, palette.muted)
+        val strongIcons = IconSet(this, palette.foreground)
+        val searchIcon = ImageView(this).apply {
+            setImageDrawable(mutedIcons.make(R.drawable.ic_bar_search))
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        }
+        val clearButton = ImageView(this).apply {
+            setImageDrawable(mutedIcons.make(R.drawable.ic_bar_clear))
+            scaleType = ImageView.ScaleType.CENTER
+            contentDescription = getString(R.string.clear)
+            background = Ui.ripple(context, palette, oval = true)
+            isClickable = true
+            visibility = View.GONE
+            setOnClickListener { input.setText("") }
+        }
+
         input = EditText(this).apply {
             id = R.id.search_input
             hint = getString(R.string.search_hint)
@@ -216,9 +232,8 @@ class SearchActivity : Activity(), RowCallbacks {
             } else {
                 InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_FILTER or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
             }
-            background = Ui.outline(context, palette, 14)
-            val pad = Ui.dp(context, 16)
-            setPadding(pad, Ui.dp(context, 14), pad, Ui.dp(context, 14))
+            background = null
+            setPaddingRelative(Ui.dp(context, 12), Ui.dp(context, 14), Ui.dp(context, 8), Ui.dp(context, 14))
             contentDescription = getString(R.string.search_hint)
             setOnEditorActionListener { _, actionId, event ->
                 val enter = actionId == EditorInfo.IME_ACTION_GO || actionId == EditorInfo.IME_ACTION_DONE ||
@@ -231,20 +246,32 @@ class SearchActivity : Activity(), RowCallbacks {
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
                 override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
                 override fun afterTextChanged(s: Editable?) {
+                    Ui.gone(clearButton, s.isNullOrEmpty())
                     runQuery(s?.toString().orEmpty())
                 }
             })
         }
 
-        val settingsButton = Ui.text(this, "⋯", 22f, palette.muted).apply {
-            gravity = Gravity.CENTER
+        val field = Ui.row(this).apply {
+            background = Ui.outline(context, palette, 14)
+            setPaddingRelative(Ui.dp(context, 14), 0, Ui.dp(context, 4), 0)
+            addView(searchIcon, LinearLayout.LayoutParams(Ui.dp(context, 24), Ui.dp(context, 24)))
+            addView(input, Ui.weight())
+            addView(clearButton, LinearLayout.LayoutParams(Ui.dp(context, 44), Ui.dp(context, 44)))
+        }
+
+        val settingsButton = ImageView(this).apply {
+            setImageDrawable(strongIcons.make(R.drawable.ic_bar_settings))
+            scaleType = ImageView.ScaleType.CENTER
             contentDescription = getString(R.string.settings)
+            background = Ui.ripple(context, palette, oval = true)
+            isClickable = true
             setOnClickListener { startActivity(Intent(context, SettingsActivity::class.java)) }
         }
         val bar = Ui.row(this).apply {
             val pad = Ui.dp(context, 12)
-            setPadding(pad, pad / 2, pad / 2, pad)
-            addView(input, Ui.weight())
+            setPaddingRelative(pad, pad / 2, pad / 2, pad)
+            addView(field, Ui.weight())
             addView(settingsButton, LinearLayout.LayoutParams(Ui.dp(context, 48), Ui.dp(context, 48)))
         }
 

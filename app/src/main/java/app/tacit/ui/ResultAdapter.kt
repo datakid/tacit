@@ -1,11 +1,15 @@
 package app.tacit.ui
 
 import android.content.Context
+import android.graphics.Typeface
+import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
+import android.util.SparseArray
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.BaseAdapter
+import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -23,16 +27,38 @@ interface RowCallbacks {
 
 enum class ContactAction { CALL, MESSAGE, WHATSAPP, WHATSAPP_BUSINESS, SIGNAL, TELEGRAM }
 
-class ResultAdapter(private val context: Context, private val callbacks: RowCallbacks) : BaseAdapter() {
+private class ActionSpec(val action: ContactAction, val icon: Int, val label: Int)
+
+class ResultAdapter(
+    private val context: Context,
+    private val callbacks: RowCallbacks,
+    private val palette: Palette = Ui.palette(context)
+) : BaseAdapter() {
 
     private var items: List<SearchItem> = emptyList()
-    var palette: Palette = Ui.palette(context)
     var selected = 0
         set(value) {
             field = value
             notifyDataSetChanged()
         }
     var installedMessengers: Set<ContactAction> = emptySet()
+
+    private val icons = IconSet(context, palette.foreground)
+    private val mediumFace: Typeface = Typeface.create(Typeface.DEFAULT, 500, false)
+    private val dp1 = Ui.dp(context, 1)
+    private val dp4 = Ui.dp(context, 4)
+    private val dp8 = Ui.dp(context, 8)
+    private val dp12 = Ui.dp(context, 12)
+    private val dp32 = Ui.dp(context, 32)
+    private val dp40 = Ui.dp(context, 40)
+    private val dp48 = Ui.dp(context, 48)
+    private val dp56 = Ui.dp(context, 56)
+    private val specs = listOf(
+        ActionSpec(ContactAction.CALL, R.drawable.ic_action_call, R.string.action_call),
+        ActionSpec(ContactAction.MESSAGE, R.drawable.ic_action_message, R.string.action_message),
+        ActionSpec(ContactAction.WHATSAPP, R.drawable.ic_action_whatsapp, R.string.action_whatsapp),
+        ActionSpec(ContactAction.WHATSAPP_BUSINESS, R.drawable.ic_action_whatsapp_business, R.string.action_whatsapp_business)
+    )
 
     fun submit(newItems: List<SearchItem>) {
         items = newItems
@@ -50,63 +76,95 @@ class ResultAdapter(private val context: Context, private val callbacks: RowCall
     override fun getItemViewType(position: Int): Int = 0
 
     override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-        val holder = (convertView?.tag as? Holder) ?: Holder(context)
-        val item = items[position]
-        holder.bind(item, position == selected)
+        val holder = (convertView?.tag as? Holder) ?: Holder()
+        holder.bind(items[position], position == selected)
         return holder.root
     }
 
-    private inner class Holder(context: Context) {
+    private inner class Holder {
         val root: LinearLayout = Ui.row(context)
-        val glyph = TextView(context)
-        val icon = ImageView(context)
-        val title: TextView
-        val subtitle: TextView
-        val actions = Ui.row(context)
-        var boundKey: String? = null
+        val slot = FrameLayout(context)
+        val initials = TextView(context)
+        val kindIcon = ImageView(context)
+        val appIcon = ImageView(context)
+        val title: TextView = Ui.text(context, "", 16f, palette.foreground)
+        val subtitle: TextView = Ui.text(context, "", 13f, palette.muted)
+        val actions: LinearLayout = Ui.row(context)
+        val actionButtons = ArrayList<ImageView>(specs.size)
+        val selectedBackground = GradientDrawable().apply {
+            setColor(palette.surface)
+            cornerRadius = Ui.dp(context, 10).toFloat()
+        }
+        val kindDrawables = SparseArray<Drawable>()
+        var boundItem: SearchItem? = null
 
         init {
-            val pad = Ui.dp(context, 12)
-            root.setPadding(pad, Ui.dp(context, 8), Ui.dp(context, 6), Ui.dp(context, 8))
-            root.minimumHeight = Ui.dp(context, 56)
+            root.setPaddingRelative(dp12, dp8, dp4, dp8)
+            root.minimumHeight = dp56
             root.tag = this
             root.isFocusable = false
-            val iconSize = Ui.dp(context, 32)
-            glyph.layoutParams = LinearLayout.LayoutParams(iconSize, iconSize)
-            glyph.gravity = Gravity.CENTER
-            glyph.textSize = 14f
-            icon.layoutParams = LinearLayout.LayoutParams(iconSize, iconSize)
+            root.foreground = Ui.ripple(context, palette, 10)
+            root.setOnClickListener { view -> boundItem?.let { callbacks.onPrimary(it, view) } }
+            root.setOnLongClickListener { view ->
+                boundItem?.let { callbacks.onSecondary(it, view) }
+                true
+            }
+
+            initials.gravity = Gravity.CENTER
+            initials.textSize = 13f
+            initials.typeface = mediumFace
+            initials.setTextColor(palette.foreground)
+            initials.background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setStroke(dp1, palette.line)
+            }
+            kindIcon.setPadding(dp8, dp8, dp8, dp8)
+            appIcon.setPadding(dp4, dp4, dp4, dp4)
+            slot.addView(initials, FrameLayout.LayoutParams(dp32, dp32, Gravity.CENTER))
+            slot.addView(kindIcon, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            slot.addView(appIcon, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+
+            title.typeface = mediumFace
             val texts = Ui.column(context)
-            texts.setPadding(pad, 0, pad / 2, 0)
-            title = Ui.text(context, "", 16f, palette.foreground)
-            subtitle = Ui.text(context, "", 12f, palette.muted)
+            texts.setPaddingRelative(dp12, 0, dp4, 0)
             texts.addView(title)
             texts.addView(subtitle)
-            root.addView(glyph)
-            root.addView(icon)
+
+            val actionClick = View.OnClickListener { view ->
+                val item = boundItem
+                if (item != null) callbacks.onContactAction(item, view.tag as ContactAction, view)
+            }
+            for (spec in specs) {
+                val button = ImageView(context).apply {
+                    setImageDrawable(icons.make(spec.icon))
+                    scaleType = ImageView.ScaleType.CENTER
+                    contentDescription = context.getString(spec.label)
+                    background = Ui.ripple(context, palette, oval = true)
+                    isClickable = true
+                    tag = spec.action
+                    setOnClickListener(actionClick)
+                    visibility = View.GONE
+                }
+                actionButtons.add(button)
+                actions.addView(button, LinearLayout.LayoutParams(dp48, dp48))
+            }
+            actions.visibility = View.GONE
+
+            root.addView(slot, LinearLayout.LayoutParams(dp40, dp40))
             root.addView(texts, Ui.weight())
             root.addView(actions)
         }
 
         fun bind(item: SearchItem, isSelected: Boolean) {
-            boundKey = item.key
-            title.setTextColor(palette.foreground)
-            subtitle.setTextColor(palette.muted)
+            boundItem = item
+            val sub = subtitleFor(item)
             title.text = item.label
-            subtitle.text = subtitleFor(item)
-            Ui.gone(subtitle, subtitle.text.isEmpty())
-            root.background = if (isSelected) GradientDrawable().apply {
-                setColor(palette.surface)
-                cornerRadius = Ui.dp(context, 10).toFloat()
-            } else null
+            subtitle.text = sub
+            Ui.gone(subtitle, sub.isEmpty())
+            root.background = if (isSelected) selectedBackground else null
             bindIcon(item)
             bindActions(item)
-            root.setOnClickListener { callbacks.onPrimary(item, it) }
-            root.setOnLongClickListener {
-                callbacks.onSecondary(item, it)
-                true
-            }
-            root.contentDescription = "${item.label}, ${subtitleFor(item)}"
+            root.contentDescription = if (sub.isEmpty()) item.label else item.label + ", " + sub
         }
 
         private fun subtitleFor(item: SearchItem): String = when (item.kind) {
@@ -115,66 +173,92 @@ class ResultAdapter(private val context: Context, private val callbacks: RowCall
         }
 
         private fun bindIcon(item: SearchItem) {
-            if (item.kind == ItemKind.APP && Graph.prefs.iconMode != "none") {
-                glyph.visibility = View.GONE
-                icon.visibility = View.VISIBLE
+            if (item.kind == ItemKind.APP) {
+                if (Graph.prefs.iconMode == "none") {
+                    Ui.gone(slot, true)
+                    return
+                }
+                Ui.gone(slot, false)
+                Ui.gone(kindIcon, true)
+                Ui.gone(initials, true)
+                Ui.gone(appIcon, false)
                 val cached = Graph.icons.cached(item.key)
-                icon.setImageBitmap(cached)
+                appIcon.setImageBitmap(cached)
                 if (cached == null) {
                     val key = item.key
                     Graph.icons.load(item.key, item.payload, palette.foreground) { bitmap ->
-                        if (boundKey == key) icon.setImageBitmap(bitmap)
+                        if (boundItem?.key == key) appIcon.setImageBitmap(bitmap)
                     }
                 }
                 return
             }
-            icon.visibility = View.GONE
-            glyph.visibility = if (Graph.prefs.iconMode == "none" && item.kind == ItemKind.APP) View.GONE else View.VISIBLE
-            glyph.setTextColor(palette.foreground)
-            glyph.text = glyphFor(item)
-            glyph.background = GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
-                setStroke(Ui.dp(context, 1), palette.line)
+            Ui.gone(slot, false)
+            Ui.gone(appIcon, true)
+            val res = kindIconRes(item)
+            if (res != 0) {
+                Ui.gone(initials, true)
+                Ui.gone(kindIcon, false)
+                kindIcon.setImageDrawable(drawableFor(res))
+            } else {
+                Ui.gone(kindIcon, true)
+                Ui.gone(initials, false)
+                initials.text = initialsOf(item.label)
             }
         }
 
-        private fun glyphFor(item: SearchItem): String = when (item.kind) {
-            ItemKind.CONTACT -> item.label.split(' ').filter { it.isNotEmpty() }.take(2).joinToString("") { it.take(1) }.uppercase()
-            ItemKind.SETTING -> "⚙"
-            ItemKind.FILE -> if (item.subtitle.endsWith("/")) "▢" else "▤"
-            ItemKind.SNIPPET -> "❝"
-            ItemKind.CLIPBOARD -> "⎘"
-            ItemKind.CALCULATOR -> "="
-            ItemKind.WEB -> "↗"
-            ItemKind.ACTION -> "›"
-            ItemKind.APP -> item.label.take(1).uppercase()
+        private fun drawableFor(res: Int): Drawable {
+            val existing = kindDrawables.get(res)
+            if (existing != null) return existing
+            val made = icons.make(res)
+            kindDrawables.put(res, made)
+            return made
         }
 
         private fun bindActions(item: SearchItem) {
-            actions.removeAllViews()
-            if (item.kind != ItemKind.CONTACT) return
             val info = item.extra as? ContactInfo
-            if (info != null && info.numbers.isEmpty()) return
-            addAction(item, ContactAction.CALL, "☎", R.string.action_call)
-            addAction(item, ContactAction.MESSAGE, "✉", R.string.action_message)
+            if (item.kind != ItemKind.CONTACT || (info != null && info.numbers.isEmpty())) {
+                Ui.gone(actions, true)
+                return
+            }
+            Ui.gone(actions, false)
             val hasWa = ContactAction.WHATSAPP in installedMessengers
             val hasWab = ContactAction.WHATSAPP_BUSINESS in installedMessengers
-            if (hasWa) addAction(item, ContactAction.WHATSAPP, "W", R.string.action_whatsapp)
-            if (hasWab && (!hasWa || info?.whatsappBusinessDataId != null)) addAction(item, ContactAction.WHATSAPP_BUSINESS, "B", R.string.action_whatsapp_business)
+            Ui.gone(actionButtons[0], false)
+            Ui.gone(actionButtons[1], false)
+            Ui.gone(actionButtons[2], !hasWa)
+            Ui.gone(actionButtons[3], !(hasWab && (!hasWa || info?.whatsappBusinessDataId != null)))
         }
+    }
 
-        private fun addAction(item: SearchItem, action: ContactAction, symbol: String, labelRes: Int) {
-            val size = Ui.dp(context, 44)
-            val button = TextView(context).apply {
-                text = symbol
-                textSize = 16f
-                gravity = Gravity.CENTER
-                setTextColor(palette.foreground)
-                contentDescription = context.getString(labelRes)
-                isClickable = true
-                setOnClickListener { callbacks.onContactAction(item, action, it) }
+    private fun kindIconRes(item: SearchItem): Int = when (item.kind) {
+        ItemKind.SETTING -> R.drawable.ic_kind_setting
+        ItemKind.FILE -> if (item.subtitle.endsWith("/")) R.drawable.ic_kind_folder else R.drawable.ic_kind_file
+        ItemKind.SNIPPET -> R.drawable.ic_kind_snippet
+        ItemKind.CLIPBOARD -> R.drawable.ic_kind_clipboard
+        ItemKind.CALCULATOR -> R.drawable.ic_kind_calculator
+        ItemKind.WEB -> R.drawable.ic_kind_web
+        ItemKind.ACTION -> actionIconRes(item)
+        ItemKind.CONTACT, ItemKind.APP -> 0
+    }
+
+    private fun actionIconRes(item: SearchItem): Int = when {
+        item.key.startsWith("ql:") -> R.drawable.ic_kind_quicklink
+        item.payload.startsWith("dial|") -> R.drawable.ic_action_call
+        item.payload.startsWith("sms|") -> R.drawable.ic_action_message
+        item.payload.startsWith("wa|") -> R.drawable.ic_action_whatsapp
+        else -> R.drawable.ic_kind_action
+    }
+
+    private fun initialsOf(label: String): String {
+        val out = StringBuilder(2)
+        var i = 0
+        while (i < label.length && out.length < 2) {
+            while (i < label.length && label[i] == ' ') i++
+            if (i < label.length) {
+                out.append(label[i])
+                while (i < label.length && label[i] != ' ') i++
             }
-            actions.addView(button, LinearLayout.LayoutParams(size, size))
         }
+        return out.toString().uppercase()
     }
 }
