@@ -27,18 +27,18 @@ class SnippetsActivity : Activity() {
         palette = Ui.palette(this)
         window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(palette.background))
         val root = Ui.column(this)
-        root.fitsSystemWindows = true
-        val pad = Ui.dp(this, 12)
+        val pad = Ui.dp(this, 16)
+        val gap = Ui.dp(this, 12)
         root.setPadding(pad, pad, pad, pad)
         root.addView(Ui.text(this, getString(R.string.snippets), 22f, palette.foreground, bold = true))
-        val tools = Ui.row(this).apply { setPadding(0, pad, 0, pad) }
+        val tools = Ui.row(this).apply { setPadding(0, gap, 0, gap) }
         tools.addView(Ui.chip(this, palette, getString(R.string.add)) { edit(null) })
-        tools.addView(View(this), LinearLayout.LayoutParams(pad, 1))
+        tools.addView(View(this), LinearLayout.LayoutParams(gap, 1))
         tools.addView(Ui.chip(this, palette, getString(R.string.export_csv)) {
             startActivityForResult(Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE)
                 .setType("text/csv").putExtra(Intent.EXTRA_TITLE, "tacit-snippets.csv"), 51)
         })
-        tools.addView(View(this), LinearLayout.LayoutParams(pad, 1))
+        tools.addView(View(this), LinearLayout.LayoutParams(gap, 1))
         tools.addView(Ui.chip(this, palette, getString(R.string.import_csv)) {
             startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"), 52)
         })
@@ -51,7 +51,7 @@ class SnippetsActivity : Activity() {
             override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
                 val snippet = snippets[position]
                 val column = Ui.column(this@SnippetsActivity)
-                column.setPadding(pad, pad, pad, pad)
+                column.setPadding(0, gap, 0, gap)
                 val head = listOf(snippet.trigger, snippet.title).filter { it.isNotEmpty() }.joinToString(" · ").ifEmpty { "—" }
                 column.addView(Ui.text(this@SnippetsActivity, head, 15f, palette.foreground, bold = true))
                 column.addView(Ui.text(this@SnippetsActivity, snippet.body.replace('\n', ' '), 13f, palette.muted))
@@ -64,7 +64,7 @@ class SnippetsActivity : Activity() {
             divider = android.graphics.drawable.ColorDrawable(palette.line)
             dividerHeight = 1
         }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
-        setContentView(root)
+        setContentView(Ui.screen(this, root))
         Ui.applyBars(window, Ui.isDark(this))
         reload()
     }

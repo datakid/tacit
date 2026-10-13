@@ -15,6 +15,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.Window
 import android.view.WindowInsetsController
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import app.tacit.Graph
@@ -110,6 +111,12 @@ object Ui {
         setColor(palette.surface)
         setStroke(dp(context, 1), palette.line)
     }
+
+    fun screen(activity: Activity, content: View): View =
+        FrameLayout(activity).apply {
+            fitsSystemWindows = true
+            addView(content, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+        }
 
     fun ripple(context: Context, palette: Palette, radiusDp: Int = 0, oval: Boolean = false): RippleDrawable {
         val mask = GradientDrawable().apply {

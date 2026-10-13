@@ -46,8 +46,8 @@ class AliasesActivity : Activity() {
         palette = Ui.palette(this)
         window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(palette.background))
         val root = Ui.column(this)
-        root.fitsSystemWindows = true
-        val pad = Ui.dp(this, 12)
+        val pad = Ui.dp(this, 16)
+        val gap = Ui.dp(this, 12)
         root.setPadding(pad, pad, pad, pad)
 
         root.addView(Ui.text(this, getString(R.string.aliases), 22f, palette.foreground, bold = true))
@@ -55,7 +55,7 @@ class AliasesActivity : Activity() {
         root.addView(HorizontalScrollView(this).apply {
             isHorizontalScrollBarEnabled = false
             addView(tabs)
-            setPadding(0, pad, 0, pad)
+            setPadding(0, gap, 0, gap)
         })
 
         val filterField = EditText(this).apply {
@@ -64,7 +64,7 @@ class AliasesActivity : Activity() {
             setTextColor(palette.foreground)
             isSingleLine = true
             background = Ui.outline(context, palette, 10)
-            setPadding(pad, pad, pad, pad)
+            setPadding(gap, gap, gap, gap)
             addTextChangedListener(object : TextWatcher {
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
                 override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
@@ -76,7 +76,7 @@ class AliasesActivity : Activity() {
         }
         root.addView(filterField, Ui.matchWrap())
 
-        val tools = Ui.row(this).apply { setPadding(0, pad, 0, pad) }
+        val tools = Ui.row(this).apply { setPadding(0, gap, 0, gap) }
         tools.addView(Ui.chip(this, palette, getString(R.string.save)) { save() })
         tools.addView(space())
         tools.addView(Ui.chip(this, palette, getString(R.string.fill_initials)) { fillInitials() })
@@ -92,7 +92,7 @@ class AliasesActivity : Activity() {
         conflicts = Ui.text(this, "", 12f, palette.muted).apply { maxLines = 3 }
         root.addView(conflicts)
 
-        val header = Ui.row(this).apply { setPadding(pad, pad / 2, pad, pad / 2) }
+        val header = Ui.row(this).apply { setPadding(0, gap / 2, 0, gap / 2) }
         header.addView(Ui.text(this, getString(R.string.col_item), 12f, palette.muted, bold = true), Ui.weight(1f))
         header.addView(Ui.text(this, getString(R.string.col_aliases), 12f, palette.muted, bold = true), Ui.weight(1.3f))
         root.addView(header)
@@ -106,7 +106,7 @@ class AliasesActivity : Activity() {
             itemsCanFocus = true
         }
         root.addView(list, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
-        setContentView(root)
+        setContentView(Ui.screen(this, root))
         Ui.applyBars(window, Ui.isDark(this))
         buildTabs()
         reload()
@@ -258,7 +258,7 @@ class AliasesActivity : Activity() {
 
         init {
             val pad = Ui.dp(this@AliasesActivity, 10)
-            root.setPadding(pad, pad / 2, pad, pad / 2)
+            root.setPadding(0, pad / 2, 0, pad / 2)
             root.tag = this
             field.isSingleLine = true
             field.textSize = 14f

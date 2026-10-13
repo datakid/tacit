@@ -34,11 +34,11 @@ class QuicklinksActivity : Activity() {
         palette = Ui.palette(this)
         window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(palette.background))
         val root = Ui.column(this)
-        root.fitsSystemWindows = true
-        val pad = Ui.dp(this, 12)
+        val pad = Ui.dp(this, 16)
+        val gap = Ui.dp(this, 12)
         root.setPadding(pad, pad, pad, pad)
         root.addView(Ui.text(this, getString(R.string.quicklinks), 22f, palette.foreground, bold = true))
-        val tools = Ui.row(this).apply { setPadding(0, pad, 0, pad) }
+        val tools = Ui.row(this).apply { setPadding(0, gap, 0, gap) }
         tools.addView(Ui.chip(this, palette, getString(R.string.add)) { edit(null) })
         root.addView(tools)
         emptyView = Ui.text(this, getString(R.string.ql_empty), 13f, palette.muted)
@@ -50,7 +50,7 @@ class QuicklinksActivity : Activity() {
             override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
                 val link = links[position]
                 val column = Ui.column(this@QuicklinksActivity)
-                column.setPadding(pad, pad, pad, pad)
+                column.setPadding(0, gap, 0, gap)
                 column.addView(Ui.text(this@QuicklinksActivity, link.name, 15f, palette.foreground, bold = true))
                 column.addView(Ui.text(this@QuicklinksActivity, summary(link), 13f, palette.muted))
                 column.setOnClickListener { edit(link) }
@@ -62,7 +62,7 @@ class QuicklinksActivity : Activity() {
             divider = android.graphics.drawable.ColorDrawable(palette.line)
             dividerHeight = 1
         }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
-        setContentView(root)
+        setContentView(Ui.screen(this, root))
         Ui.applyBars(window, Ui.isDark(this))
         reload()
     }
