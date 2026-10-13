@@ -3,7 +3,7 @@
     <color name="tacit_background">#FFFFFFFF</color>
     <color name="tacit_foreground">#FF000000</color>
     <color name="tacit_muted">#FF6E6E6E</color>
-    <color name="icon_background">#FFFFFFFF</color>
-    <color name="icon_foreground">#FF000000</color>
+    <color name="icon_background">#FF000000</color>
+    <color name="icon_foreground">#FFFFFFFF</color>
     <bool name="light_bars">true</bool>
 </resources>
