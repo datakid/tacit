@@ -260,6 +260,8 @@ class AliasesActivity : Activity() {
             val pad = Ui.dp(this@AliasesActivity, 10)
             root.setPadding(0, pad / 2, 0, pad / 2)
             root.tag = this
+            name.textAlignment = View.TEXT_ALIGNMENT_VIEW_START
+            field.textAlignment = View.TEXT_ALIGNMENT_VIEW_START
             field.isSingleLine = true
             field.textSize = 14f
             field.setTextColor(palette.foreground)
