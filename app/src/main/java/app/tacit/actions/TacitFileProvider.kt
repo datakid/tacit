@@ -33,6 +33,7 @@ class TacitFileProvider : ContentProvider() {
         val file = fileOf(uri)
         val columns = projection ?: arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE)
         val cursor = MatrixCursor(columns, 1)
+        if (!file.exists()) return cursor
         cursor.addRow(columns.map { column ->
             when (column) {
                 OpenableColumns.DISPLAY_NAME -> file.name

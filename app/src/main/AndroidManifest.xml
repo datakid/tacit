@@ -105,6 +105,10 @@
         <activity android:name=".ui.QuicklinksActivity" android:exported="false"
             android:label="@string/quicklinks" android:windowSoftInputMode="adjustResize" />
 
+        <activity android:name=".actions.QuicklinkRunActivity" android:exported="false"
+            android:taskAffinity="" android:excludeFromRecents="true" android:noHistory="true"
+            android:theme="@android:style/Theme.NoDisplay" />
+
         <activity android:name=".system.SaveTextActivity" android:exported="true"
             android:label="@string/save_text_label" android:taskAffinity=""
             android:excludeFromRecents="true" android:noHistory="true"

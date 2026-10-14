@@ -36,6 +36,13 @@ class AppSource(private val context: Context) {
 
     fun appItems(): List<SearchItem> = cached
 
+    fun hasApp(payload: String): Boolean = cached.any { it.payload == payload }
+
+    fun hasShortcut(payload: String): Boolean? {
+        val current = shortcuts
+        return if (current.isEmpty()) null else current.any { it.payload == payload }
+    }
+
     fun reload() {
         if (!registered) {
             launcherApps.registerCallback(callback, Graph.worker)
@@ -101,11 +108,11 @@ class AppSource(private val context: Context) {
         launcherApps.startMainActivity(component, user, bounds, null)
     }
 
-    fun launchShortcut(payload: String, bounds: android.graphics.Rect?) {
+    fun launchShortcut(payload: String, bounds: android.graphics.Rect?): Boolean {
         val parts = payload.split('|')
-        if (parts.size < 3) return
+        if (parts.size < 3) return false
         val user = userFor(parts[2].toLongOrNull())
-        runCatching { launcherApps.startShortcut(parts[0], parts[1], bounds, null, user) }
+        return runCatching { launcherApps.startShortcut(parts[0], parts[1], bounds, null, user) }.isSuccess
     }
 
     fun openAppInfo(payload: String) {

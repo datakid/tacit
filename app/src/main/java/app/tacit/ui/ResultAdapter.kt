@@ -16,6 +16,7 @@ import android.widget.TextView
 import app.tacit.Graph
 import app.tacit.R
 import app.tacit.core.ItemKind
+import app.tacit.core.QuicklinkType
 import app.tacit.core.SearchItem
 import app.tacit.sources.ContactInfo
 
@@ -245,7 +246,7 @@ class ResultAdapter(
     }
 
     private fun actionIconRes(item: SearchItem): Int = when {
-        item.key.startsWith("ql:") -> R.drawable.ic_kind_quicklink
+        item.key.startsWith("ql:") -> QuicklinkIcons.res(item.extra as? QuicklinkType)
         item.payload.startsWith("dial|") -> R.drawable.ic_action_call
         item.payload.startsWith("sms|") -> R.drawable.ic_action_message
         item.payload.startsWith("wa|") -> R.drawable.ic_action_whatsapp

@@ -41,6 +41,14 @@ class RepoRulesTest {
     }
 
     @Test
+    fun releaseNotesExistForTheCurrentVersion() {
+        val gradle = File(moduleDir(), "build.gradle.kts").readText()
+        val version = Regex("versionName = \"([^\"]+)\"").find(gradle)!!.groupValues[1]
+        val notes = File(moduleDir().parentFile, "docs/release-notes").list().orEmpty()
+        assertTrue("No release notes for version $version", notes.any { it.startsWith("v$version") })
+    }
+
+    @Test
     fun manifestHasNoInternet() {
         val manifest = File(moduleDir(), "src/main/AndroidManifest.xml").readText()
         assertFalse(manifest.contains("android.permission.INTERNET"))

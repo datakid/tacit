@@ -6,9 +6,11 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import android.widget.EditText
+import android.widget.Toast
 import app.tacit.Graph
 import app.tacit.R
 import app.tacit.actions.Actions
+import app.tacit.actions.PinShortcut
 import app.tacit.core.ItemKind
 import app.tacit.core.SearchItem
 import app.tacit.data.AliasText
@@ -68,14 +70,24 @@ object SecondaryMenu {
                 }
             }
             ItemKind.SNIPPET -> add(R.string.menu_edit) { activity.startActivity(Intent(activity, SnippetsActivity::class.java)) }
-            ItemKind.ACTION -> if (item.key.startsWith("ql:")) add(R.string.menu_edit) {
-                activity.startActivity(Intent(activity, QuicklinksActivity::class.java))
+            ItemKind.ACTION -> if (item.key.startsWith("ql:")) {
+                val id = item.key.removePrefix("ql:").substringBefore(':')
+                add(R.string.menu_edit) {
+                    activity.startActivity(Intent(activity, QuicklinksActivity::class.java).putExtra(QuicklinksActivity.EXTRA_EDIT, id))
+                }
+                val link = Graph.quicklinks.get(id)
+                if (link != null && PinShortcut.supported(activity)) add(R.string.menu_add_home) {
+                    if (!PinShortcut.request(activity, link)) {
+                        Toast.makeText(activity, R.string.ql_pin_unsupported, Toast.LENGTH_LONG).show()
+                    }
+                }
             }
             ItemKind.CALCULATOR, ItemKind.WEB -> add(R.string.menu_copy) {
                 Graph.clipboard.copy(if (item.kind == ItemKind.WEB) item.label else item.payload, false)
             }
             else -> Unit
         }
+        if (QuicklinkMaker.canCreate(item)) add(R.string.menu_create_quicklink) { QuicklinkMaker.create(activity, item) }
         if (entries.isEmpty()) return
         AlertDialog.Builder(activity)
             .setTitle(item.label)

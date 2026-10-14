@@ -1,11 +1,13 @@
 package app.tacit.sources
 
 import app.tacit.Graph
+import app.tacit.R
 import app.tacit.core.ItemKind
 import app.tacit.core.QuicklinkNames
 import app.tacit.core.QuicklinkRules
 import app.tacit.core.QuicklinkType
 import app.tacit.core.SearchItem
+import app.tacit.core.TargetState
 import app.tacit.data.Quicklink
 import app.tacit.data.QuicklinkStore
 
@@ -23,7 +25,8 @@ class QuicklinkSource(private val store: QuicklinkStore) {
         val loaded = store.all()
         links = loaded
         cached = loaded.map { link ->
-            SearchItem("ql:${link.id}", ItemKind.ACTION, link.name, subtitleOf(link), payload = "ql|${link.id}")
+            SearchItem("ql:${link.id}", ItemKind.ACTION, link.name, subtitleOf(link, QuicklinkTargets.state(link)),
+                payload = "ql|${link.id}", extra = link.type)
         }
     }
 
@@ -35,12 +38,14 @@ class QuicklinkSource(private val store: QuicklinkStore) {
         if (candidates.isEmpty()) return emptyList()
         val match = QuicklinkRules.match(text, candidates) ?: return emptyList()
         val link = current.firstOrNull { it.id == match.id } ?: return emptyList()
-        return listOf(SearchItem("ql:${link.id}:q", ItemKind.ACTION, "${link.name}: ${match.query}", subtitleOf(link),
-            payload = "ql|${link.id}|${match.query}"))
+        return listOf(SearchItem("ql:${link.id}:q", ItemKind.ACTION, "${link.name}: ${match.query}", subtitleOf(link, TargetState.OK),
+            payload = "ql|${link.id}|${match.query}", extra = link.type))
     }
 
-    private fun subtitleOf(link: Quicklink): String = when (link.type) {
-        QuicklinkType.URL -> QuicklinkRules.host(link.target)
+    private fun subtitleOf(link: Quicklink, state: TargetState): String = when {
+        state == TargetState.MISSING -> Graph.context.getString(R.string.ql_missing)
+        state == TargetState.REPICK -> Graph.context.getString(R.string.ql_repick)
+        link.type == QuicklinkType.URL -> QuicklinkRules.host(link.target)
         else -> link.detail
     }
 }

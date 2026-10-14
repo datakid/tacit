@@ -1,6 +1,7 @@
 package app.tacit.data
 
 import app.tacit.Graph
+import app.tacit.core.QuicklinkRules
 import app.tacit.core.QuicklinkType
 import org.json.JSONArray
 import org.json.JSONObject
@@ -31,7 +32,7 @@ object Backup {
         val quicklinks = JSONArray()
         for (link in Graph.quicklinks.all()) {
             quicklinks.put(JSONObject().put("id", link.id).put("name", link.name).put("type", link.type.name)
-                .put("target", link.target).put("detail", link.detail))
+                .put("target", QuicklinkRules.exportTarget(link.type, link.target)).put("detail", link.detail))
         }
         root.put("quicklinks", quicklinks)
         return root.toString(2)
@@ -74,8 +75,9 @@ object Backup {
             val list = (0 until array.length()).mapNotNull { index ->
                 val item = array.getJSONObject(index)
                 val type = runCatching { QuicklinkType.valueOf(item.optString("type")) }.getOrNull() ?: return@mapNotNull null
+                val target = QuicklinkRules.importTarget(type, item.optString("target")) ?: return@mapNotNull null
                 Quicklink(item.optString("id").ifEmpty { Graph.quicklinks.newId() }, item.optString("name"), type,
-                    item.optString("target"), item.optString("detail"))
+                    target, item.optString("detail"))
             }
             Graph.quicklinks.replaceAll(list)
         }

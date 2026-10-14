@@ -146,7 +146,7 @@ jobs:
           arch: x86_64
           target: google_apis
           disable-animations: true
-          script: bash .github/scripts/device-tests.sh app.tacit.SettingsApplyTest,app.tacit.SettingsScreenTest,app.tacit.ClipboardCaptureTest,app.tacit.ClipboardFocusTest,app.tacit.BatteryDisplayTest,app.tacit.QuicklinksTest,app.tacit.SearchScreenTest,app.tacit.ResultAdapterTest,app.tacit.ScreenPaddingTest,app.tacit.ScreenshotTest
+          script: bash .github/scripts/device-tests.sh app.tacit.SettingsApplyTest,app.tacit.SettingsScreenTest,app.tacit.ClipboardCaptureTest,app.tacit.ClipboardFocusTest,app.tacit.BatteryDisplayTest,app.tacit.QuicklinksTest,app.tacit.QuicklinksV2Test,app.tacit.SearchScreenTest,app.tacit.ResultAdapterTest,app.tacit.ScreenPaddingTest,app.tacit.ScreenshotTest
 
       - name: Publish screenshots
         if: always() && matrix.api == 35 && github.ref == 'refs/heads/beta'

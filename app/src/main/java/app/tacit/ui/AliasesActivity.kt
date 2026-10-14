@@ -22,16 +22,26 @@ import app.tacit.core.SearchItem
 import app.tacit.data.AliasText
 import app.tacit.data.Csv
 
+private class AliasCategory(
+    val slug: String,
+    val label: Int,
+    val accepts: (SearchItem) -> Boolean,
+    val source: () -> List<SearchItem>
+)
+
 class AliasesActivity : Activity() {
 
     private val categories = listOf(
-        ItemKind.APP to R.string.cat_apps,
-        ItemKind.CONTACT to R.string.cat_contacts,
-        ItemKind.SETTING to R.string.cat_settings,
-        ItemKind.SNIPPET to R.string.cat_snippets,
-        ItemKind.ACTION to R.string.cat_shortcuts
+        AliasCategory("app", R.string.cat_apps, { it.kind == ItemKind.APP }) { Graph.apps.appItems() },
+        AliasCategory("contact", R.string.cat_contacts, { it.kind == ItemKind.CONTACT }) { Graph.contacts.items() },
+        AliasCategory("setting", R.string.cat_settings, { it.kind == ItemKind.SETTING }) { Graph.settings.items() },
+        AliasCategory("snippet", R.string.cat_snippets, { it.kind == ItemKind.SNIPPET }) { Graph.snippetSource.items() },
+        AliasCategory("quicklink", R.string.cat_quicklinks, { it.key.startsWith("ql:") && !it.key.endsWith(":q") }) { Graph.quicklinkSource.items() },
+        AliasCategory("action", R.string.cat_shortcuts, { it.kind == ItemKind.ACTION && !it.key.startsWith("ql:") }) {
+            Graph.apps.items().filter { it.kind == ItemKind.ACTION }
+        }
     )
-    private var category = ItemKind.APP
+    private var category = categories[0]
     private var filter = ""
     private var rows: List<SearchItem> = emptyList()
     private val edits = HashMap<String, String>()
@@ -121,33 +131,24 @@ class AliasesActivity : Activity() {
 
     private fun buildTabs() {
         tabs.removeAllViews()
-        for ((kind, label) in categories) {
-            val chip = Ui.chip(this, palette, getString(label)) {
+        for (entry in categories) {
+            val chip = Ui.chip(this, palette, getString(entry.label)) {
                 if (edits.isNotEmpty()) save()
-                category = kind
+                category = entry
                 buildTabs()
                 reload()
             }
-            if (kind == category) chip.setTypeface(null, android.graphics.Typeface.BOLD)
+            if (entry === category) chip.setTypeface(null, android.graphics.Typeface.BOLD)
             tabs.addView(chip)
             tabs.addView(space())
         }
     }
 
     private fun reload() {
-        val all = Graph.engine.all().filter { it.kind == category }.ifEmpty { sourceItems() }
-        rows = all.filter { filter.isEmpty() || Normalizer.normalize(it.label).contains(filter) || currentAliases(it).contains(filter) }
+        rows = sourceRows().filter { filter.isEmpty() || Normalizer.normalize(it.label).contains(filter) || currentAliases(it).contains(filter) }
             .sortedBy { it.label.lowercase() }
         adapter.notifyDataSetChanged()
         updateConflicts()
-    }
-
-    private fun sourceItems(): List<SearchItem> = when (category) {
-        ItemKind.APP -> Graph.apps.appItems()
-        ItemKind.CONTACT -> Graph.contacts.items()
-        ItemKind.SETTING -> Graph.settings.items()
-        ItemKind.SNIPPET -> Graph.snippetSource.items()
-        else -> Graph.apps.items().filter { it.kind == ItemKind.ACTION }
     }
 
     private fun currentAliases(item: SearchItem): String =
@@ -184,7 +185,7 @@ class AliasesActivity : Activity() {
 
     private fun exportCsv() {
         val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE)
-            .setType("text/csv").putExtra(Intent.EXTRA_TITLE, "tacit-aliases-${category.name.lowercase()}.csv")
+            .setType("text/csv").putExtra(Intent.EXTRA_TITLE, "tacit-aliases-${category.slug}.csv")
         startActivityForResult(intent, REQUEST_EXPORT)
     }
 
@@ -227,7 +228,7 @@ class AliasesActivity : Activity() {
         }
     }
 
-    private fun sourceRows(): List<SearchItem> = Graph.engine.all().filter { it.kind == category }.ifEmpty { sourceItems() }
+    private fun sourceRows(): List<SearchItem> = Graph.engine.all().filter(category.accepts).ifEmpty { category.source() }
 
     private inner class TableAdapter : BaseAdapter() {
         override fun getCount(): Int = rows.size
