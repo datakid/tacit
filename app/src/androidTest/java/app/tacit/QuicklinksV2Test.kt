@@ -23,6 +23,7 @@ import androidx.test.espresso.intent.matcher.IntentMatchers.hasComponent
 import androidx.test.espresso.intent.matcher.IntentMatchers.hasData
 import androidx.test.espresso.intent.matcher.IntentMatchers.hasExtra
 import androidx.test.espresso.intent.matcher.IntentMatchers.hasPackage
+import androidx.test.espresso.matcher.RootMatchers.isDialog
 import androidx.test.espresso.matcher.ViewMatchers.isAssignableFrom
 import androidx.test.espresso.matcher.ViewMatchers.isDisplayed
 import androidx.test.espresso.matcher.ViewMatchers.withHint
@@ -365,7 +366,7 @@ class QuicklinksV2Test {
         val item = Graph.settings.items().first()
         ActivityScenario.launch(SearchActivity::class.java).use { scenario ->
             scenario.onActivity { SecondaryMenu.show(it, item) {} }
-            onView(withText(R.string.menu_create_quicklink)).perform(click())
+            onView(withText(R.string.menu_create_quicklink)).inRoot(isDialog()).perform(click())
             InstrumentationRegistry.getInstrumentation().waitForIdleSync()
         }
         val saved = created().single()
@@ -379,7 +380,7 @@ class QuicklinksV2Test {
         val item = SearchItem("file:${sample.absolutePath}", ItemKind.FILE, sample.name, "~", payload = sample.absolutePath)
         ActivityScenario.launch(SearchActivity::class.java).use { scenario ->
             scenario.onActivity { SecondaryMenu.show(it, item) {} }
-            onView(withText(R.string.menu_create_quicklink)).perform(click())
+            onView(withText(R.string.menu_create_quicklink)).inRoot(isDialog()).perform(click())
             InstrumentationRegistry.getInstrumentation().waitForIdleSync()
         }
         val saved = created().single()
@@ -395,8 +396,8 @@ class QuicklinksV2Test {
         val item = SearchItem("contact:lk", ItemKind.CONTACT, "Qlv2 Mum", "01012345678", listOf("01012345678"), "1", info)
         ActivityScenario.launch(SearchActivity::class.java).use { scenario ->
             scenario.onActivity { SecondaryMenu.show(it, item) {} }
-            onView(withText(R.string.menu_create_quicklink)).perform(click())
-            onView(withText(R.string.action_message)).perform(click())
+            onView(withText(R.string.menu_create_quicklink)).inRoot(isDialog()).perform(click())
+            onView(withText(R.string.action_message)).inRoot(isDialog()).perform(click())
             InstrumentationRegistry.getInstrumentation().waitForIdleSync()
         }
         val saved = created().single()

@@ -38,7 +38,7 @@ for cls in ${1//,/ }; do
   find app/build/outputs/androidTest-results -name 'TEST-*.xml' 2>/dev/null | while read -r f; do
     grep -oE '<testsuite [^>]*>' "$f" | head -1 | sed -E 's/.*name="app\.tacit\.([^"]*)".*tests="([0-9]+)".*failures="([0-9]+)".*errors="([0-9]+)".*skipped="([0-9]+)".*time="([^"]*)".*/\1 tests=\2 failures=\3 errors=\4 skipped=\5 time=\6s/'
     grep -oE '<testcase [^>]*>' "$f" | sed -E 's/<testcase name="([^"]*)".*time="([0-9.]+)".*/\1 \2/' | awk '$2 >= 5 {print "  slow: " $0}'
-    grep -A5 '<failure' "$f" | cut -c1-260
+    awk '/<testcase /{match($0,/name="[^"]*"/); name=substr($0,RSTART,RLENGTH)} /<failure/{print "FAILED " name; n=5} n>0{print; n--}' "$f" | cut -c1-260
   done >> tests-ran.txt
 done
 adb logcat -d -v threadtime > logcat.txt
