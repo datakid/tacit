@@ -74,6 +74,7 @@
     <string name="ql_pick_folder">اختر مجلدًا…</string>
     <string name="ql_nothing_found">لا توجد نتائج</string>
     <string name="ql_missing">الهدف غير موجود، تعديل؟</string>
+    <string name="ql_missing_here">الهدف غير موجود. اختره من جديد.</string>
     <string name="ql_repick">اختر الهدف من جديد</string>
     <string name="ql_contacts_off">فعّل جهات الاتصال من إعدادات Tacit أولًا</string>
     <string name="ql_no_numbers">لا يوجد رقم هاتف لجهة الاتصال هذه</string>

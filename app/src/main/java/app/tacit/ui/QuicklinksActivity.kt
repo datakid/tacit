@@ -191,6 +191,9 @@ class QuicklinksActivity : Activity() {
         }
         val help = Ui.text(this, getString(R.string.ql_url_help), 12f, palette.muted).apply { maxLines = 3 }
         val choose = Ui.chip(this, palette, getString(chooseLabel(type))) {}
+        val state = if (existing != null) states[existing.id] ?: TargetState.OK else TargetState.OK
+        val note = Ui.text(this, getString(if (state == TargetState.REPICK) R.string.ql_repick else R.string.ql_missing_here), 12f, palette.muted)
+            .apply { maxLines = 2 }
         val aliases = EditText(this).apply {
             hint = getString(R.string.ql_aliases)
             setText(if (existing != null) AliasText.join(Graph.aliases.get("ql:${existing.id}")) else "")
@@ -203,9 +206,11 @@ class QuicklinksActivity : Activity() {
             Ui.gone(url, type != QuicklinkType.URL)
             Ui.gone(help, type != QuicklinkType.URL)
             Ui.gone(choose, type == QuicklinkType.URL)
-            val shown = pickedLabel.ifEmpty { getString(chooseLabel(type)) }
+            val shown = if (picked.isEmpty() || pickedLabel.isEmpty()) getString(chooseLabel(type)) else pickedLabel
             choose.text = shown
             choose.contentDescription = shown
+            val flagged = state != TargetState.OK && type == startType && picked == originalPicked && type != QuicklinkType.URL
+            Ui.gone(note, !flagged)
         }
         choose.setOnClickListener {
             pick(type, name) { target, label ->
@@ -242,6 +247,7 @@ class QuicklinksActivity : Activity() {
         form.addView(choose, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
             topMargin = gap
         })
+        form.addView(note)
         form.addView(aliases)
         if (existing != null && PinShortcut.supported(this)) {
             form.addView(Ui.chip(this, palette, getString(R.string.menu_add_home)) { pin(existing) },

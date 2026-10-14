@@ -76,6 +76,7 @@
     <string name="ql_pick_folder">Choose a folder…</string>
     <string name="ql_nothing_found">Nothing found</string>
     <string name="ql_missing">Target missing, edit?</string>
+    <string name="ql_missing_here">This target is missing. Choose it again.</string>
     <string name="ql_repick">Choose the target again</string>
     <string name="ql_contacts_off">Turn on Contacts in Tacit settings first</string>
     <string name="ql_no_numbers">This contact has no phone number</string>

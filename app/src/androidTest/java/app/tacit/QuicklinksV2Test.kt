@@ -345,6 +345,17 @@ class QuicklinksV2Test {
         ActivityScenario.launch<QuicklinksActivity>(intent).use {
             onView(withHint(R.string.ql_name)).check(matches(withText("qlv2 repick")))
             onView(withText(R.string.ql_pick_file)).check(matches(isDisplayed()))
+            onView(withText(R.string.ql_repick)).check(matches(isDisplayed()))
+        }
+    }
+
+    @Test
+    fun editorExplainsAMissingTarget() {
+        val link = add(QuicklinkType.FILE, gonePath(), "gone.txt", "qlv2 missing")
+        val intent = Intent(context, QuicklinksActivity::class.java).putExtra(QuicklinksActivity.EXTRA_EDIT, link.id)
+        ActivityScenario.launch<QuicklinksActivity>(intent).use {
+            onView(withText("gone.txt")).check(matches(isDisplayed()))
+            onView(withText(R.string.ql_missing_here)).check(matches(isDisplayed()))
         }
     }
 
