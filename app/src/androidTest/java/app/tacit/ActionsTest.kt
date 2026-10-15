@@ -241,7 +241,7 @@ class ActionsTest {
             val dice = rows(scenario).first()
             assertEquals("act:dice", dice.key)
             assertTrue(dice.label.toInt() in 2..12)
-            type("flip")
+            type("coin")
             assertTrue(rows(scenario).first().key == "act:coin")
             type("rand 5 7")
             assertTrue(rows(scenario).first().label.toInt() in 5..7)
