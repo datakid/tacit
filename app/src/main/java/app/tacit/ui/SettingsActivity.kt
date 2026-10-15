@@ -298,7 +298,7 @@ class SettingsActivity : Activity() {
     private fun showKeys() {
         val text = getString(R.string.keys_body, prefs.prefixCalculator, prefs.prefixClipboard.trim(), prefs.prefixSettings,
             prefs.prefixContacts, prefs.prefixFiles, prefs.prefixSnippets,
-            Graph.grammar.engines.joinToString("\n") { "${it.prefix} ⎵  ${it.name}" })
+            Graph.grammar.engines.joinToString("\n") { "${it.prefix} ⎵  ${it.name}" }) + "\n\n" + getString(R.string.keys_actions)
         AlertDialog.Builder(this).setTitle(R.string.keys).setMessage(text).setPositiveButton(R.string.ok, null).show()
     }
 

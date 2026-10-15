@@ -35,6 +35,7 @@ import app.tacit.Graph
 import app.tacit.R
 import app.tacit.TacitApp
 import app.tacit.system.BatteryStatus
+import app.tacit.actions.ActionRows
 import app.tacit.actions.Actions
 import app.tacit.clip.ClipLock
 import app.tacit.core.AliasRules
@@ -423,7 +424,7 @@ class SearchActivity : Activity(), RowCallbacks {
     private fun runQueryTraced(raw: String) {
         currentQuery = raw
         val limit = Graph.prefs.resultCount.coerceIn(3, 30)
-        val output = composer.compose(ComposeInput(raw, limit, defaultEngine(), Graph.quicklinkSource::queryRows, ::clipboardItems))
+        val output = composer.compose(ComposeInput(raw, limit, defaultEngine(), Graph.quicklinkSource::queryRows, ActionRows::rows, ::clipboardItems))
         currentScope = output.parsed.scope
         val sensitiveView = output.parsed.scope == Scope.CLIPBOARD
         val aliased = aliasedFileRows(output.parsed)
@@ -543,7 +544,8 @@ class SearchActivity : Activity(), RowCallbacks {
         val ok = Actions.primary(this, item, bounds)
         if (!ok) return
         val leavesApp = item.kind !in setOf(ItemKind.CALCULATOR, ItemKind.SNIPPET, ItemKind.CLIPBOARD) &&
-            !(item.kind == ItemKind.SETTING && item.payload.startsWith("toggle|")) && !item.payload.startsWith("copy|")
+            !(item.kind == ItemKind.SETTING && item.payload.startsWith("toggle|")) && !item.payload.startsWith("copy|") &&
+            !item.payload.startsWith("copyhidden|") && !item.payload.startsWith("xform|")
         if (leavesApp && Graph.prefs.closeAfterAction) input.setText("")
         if (!leavesApp) {
             emptyHint.text = getString(R.string.copied)

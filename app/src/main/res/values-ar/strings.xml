@@ -188,4 +188,42 @@
 
     <string name="shortcut_settings">الإعدادات</string>
     <string name="shortcut_aliases">الأسماء المستعارة</string>
+
+    <string name="act_timer">مؤقت: %1$s</string>
+    <string name="act_alarm">منبّه: %1$s</string>
+    <string name="act_event">موعد: %1$s</string>
+    <string name="act_event_new">موعد جديد في التقويم</string>
+    <string name="act_clock">الساعة</string>
+    <string name="act_calendar">التقويم</string>
+    <string name="act_unit_h">%1$d س</string>
+    <string name="act_unit_m">%1$d د</string>
+    <string name="act_unit_s">%1$d ث</string>
+    <string name="act_uuid">UUID، اضغط للنسخ</string>
+    <string name="act_password">كلمة مرور من %1$d حرفًا، اضغط للنسخ</string>
+    <string name="act_dice">نرد %1$s</string>
+    <string name="act_random">رقم عشوائي %1$s</string>
+    <string name="act_heads">صورة</string>
+    <string name="act_tails">كتابة</string>
+    <string name="act_coin">رمي عملة</string>
+    <string name="act_clipboard">يحوّل نص الحافظة</string>
+    <string name="act_clip_empty">لا يوجد نص في الحافظة لتحويله</string>
+    <string name="act_clip_invalid">لا يمكن تحويل نص الحافظة</string>
+    <string name="act_t_upper">أحرف كبيرة</string>
+    <string name="act_t_lower">أحرف صغيرة</string>
+    <string name="act_t_title">أول حرف كبير في كل كلمة</string>
+    <string name="act_t_reverse">عكس النص</string>
+    <string name="act_t_slug">صيغة رابط</string>
+    <string name="act_t_b64">ترميز Base64</string>
+    <string name="act_t_unb64">فك ترميز Base64</string>
+    <string name="act_t_urlenc">ترميز الرابط</string>
+    <string name="act_t_urldec">فك ترميز الرابط</string>
+    <string name="act_export_vcard">تصدير جهات الاتصال بصيغة vCard</string>
+    <string name="act_export_csv">تصدير جهات الاتصال بصيغة CSV</string>
+    <string name="act_export_numbers">تصدير أرقام الهواتف كنص</string>
+    <string name="act_export_sub">اختر مكان الحفظ</string>
+    <string name="export_started">جارٍ التصدير…</string>
+    <string name="export_done">تم الحفظ. جهات الاتصال: %1$d، الأرقام: %2$d</string>
+    <string name="export_failed">تعذّر التصدير</string>
+    <string name="export_no_permission">اسمح بالوصول إلى جهات الاتصال للتصدير</string>
+    <string name="keys_actions">timer 10 tea  مؤقت\nalarm 7:30  منبّه\nevent dentist tomorrow 3pm  موعد في التقويم\nuuid  pass 20  roll 2d6  flip  rand 1 10\nupper  lower  title  slug  b64  urlenc\nexport  جهات الاتصال بصيغة vCard أو CSV\nمؤقت  منبه  موعد  تصدير  (بالعربية أيضًا)</string>
 </resources>

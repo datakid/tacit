@@ -7,6 +7,7 @@ class ComposeInput(
     val limit: Int,
     val defaultEngine: WebEngine,
     val quicklinkRows: (String) -> List<SearchItem> = { emptyList() },
+    val actionRows: (String) -> List<SearchItem> = { emptyList() },
     val clipboardItems: () -> List<SearchItem>
 )
 
@@ -46,10 +47,16 @@ class ResultComposer(
         val calc = if (recognized == null && calculator.looksLikeMath(text)) calculatorRow(text) else null
         val matches = engine.search(text, input.limit)
         val exactAlias = matches.firstOrNull()?.let { it.score >= Tier.ALIAS_EXACT * Tier.SCALE } == true
+        val actions = input.actionRows(text)
+        val strongMatch = matches.firstOrNull()?.let { it.score >= Tier.WORD_PREFIX * Tier.SCALE } == true
+        val actionsLast = actions.isNotEmpty() && !exactAlias && text.none { it.isWhitespace() } && strongMatch
         rows.addAll(input.quicklinkRows(text))
+        if (actions.isNotEmpty() && !exactAlias && !actionsLast) rows.addAll(actions)
         if (calc != null && !exactAlias) rows.add(calc)
         rows.addAll(recognizedRows(recognized))
         for (match in matches) if (rows.size < input.limit) rows.add(match.item)
+        if (actions.isNotEmpty() && exactAlias) rows.addAll(1.coerceAtMost(rows.size), actions)
+        if (actionsLast) rows.addAll(actions)
         if (calc != null && exactAlias) rows.add(1.coerceAtMost(rows.size), calc)
         rows.add(webRow(input.defaultEngine, text))
     }

@@ -62,6 +62,13 @@ object Actions {
                 Graph.clipboard.copy(payload.removePrefix("copy|"), false)
                 true
             }
+            payload.startsWith("copyhidden|") -> {
+                Graph.clipboard.copy(payload.removePrefix("copyhidden|"), true)
+                true
+            }
+            payload.startsWith("timer|") || payload.startsWith("alarm|") || payload.startsWith("event|") -> QuickLauncher.run(activity, item)
+            payload.startsWith("xform|") -> QuickLauncher.transformClipboard(activity, payload.removePrefix("xform|"))
+            payload.startsWith("export|") -> QuickLauncher.export(activity, payload.removePrefix("export|"))
             payload == "crash|share" -> shareCrash(activity)
             payload.startsWith("ql|") -> QuicklinkLauncher.launch(activity, payload.removePrefix("ql|"), bounds)
             payload.startsWith("tacit|") -> start(activity, Intent(activity, Class.forName(payload.removePrefix("tacit|"))))

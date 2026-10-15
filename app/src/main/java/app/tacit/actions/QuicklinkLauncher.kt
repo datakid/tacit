@@ -1,7 +1,6 @@
 package app.tacit.actions
 
 import android.app.Activity
-import android.content.ClipboardManager
 import android.content.Intent
 import android.graphics.Rect
 import android.net.Uri
@@ -42,18 +41,11 @@ object QuicklinkLauncher {
     }
 
     private fun openUrl(activity: Activity, link: Quicklink, query: String): Boolean {
-        val clipboard = if (QuicklinkRules.usesClipboard(link.target)) clipboardText(activity) else ""
+        val clipboard = if (QuicklinkRules.usesClipboard(link.target)) ClipText.read(activity, CLIPBOARD_LIMIT) else ""
         val url = QuicklinkRules.normalizeUrl(QuicklinkRules.fill(link.target, query, clipboard)) ?: return false
         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
         if (QuicklinkRules.isDeepLink(url)) intent.addCategory(Intent.CATEGORY_BROWSABLE)
         return Actions.start(activity, intent)
-    }
-
-    private fun clipboardText(activity: Activity): String {
-        val manager = activity.getSystemService(ClipboardManager::class.java) ?: return ""
-        val clip = runCatching { manager.primaryClip }.getOrNull() ?: return ""
-        if (clip.itemCount == 0) return ""
-        return runCatching { clip.getItemAt(0).coerceToText(activity).toString() }.getOrDefault("").take(CLIPBOARD_LIMIT)
     }
 
     private inline fun openDocument(activity: Activity, link: Quicklink, open: () -> Boolean): Boolean {

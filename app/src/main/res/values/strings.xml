@@ -191,4 +191,42 @@
 
     <string name="shortcut_settings">Settings</string>
     <string name="shortcut_aliases">Aliases</string>
+
+    <string name="act_timer">Timer: %1$s</string>
+    <string name="act_alarm">Alarm: %1$s</string>
+    <string name="act_event">Event: %1$s</string>
+    <string name="act_event_new">New calendar event</string>
+    <string name="act_clock">Clock</string>
+    <string name="act_calendar">Calendar</string>
+    <string name="act_unit_h">%1$d h</string>
+    <string name="act_unit_m">%1$d min</string>
+    <string name="act_unit_s">%1$d s</string>
+    <string name="act_uuid">UUID, tap to copy</string>
+    <string name="act_password">Password, %1$d characters, tap to copy</string>
+    <string name="act_dice">Dice %1$s</string>
+    <string name="act_random">Random %1$s</string>
+    <string name="act_heads">Heads</string>
+    <string name="act_tails">Tails</string>
+    <string name="act_coin">Coin flip</string>
+    <string name="act_clipboard">Converts the clipboard text</string>
+    <string name="act_clip_empty">Nothing to convert on the clipboard</string>
+    <string name="act_clip_invalid">The clipboard text cannot be converted</string>
+    <string name="act_t_upper">Uppercase</string>
+    <string name="act_t_lower">Lowercase</string>
+    <string name="act_t_title">Title case</string>
+    <string name="act_t_reverse">Reverse</string>
+    <string name="act_t_slug">URL slug</string>
+    <string name="act_t_b64">Base64 encode</string>
+    <string name="act_t_unb64">Base64 decode</string>
+    <string name="act_t_urlenc">URL encode</string>
+    <string name="act_t_urldec">URL decode</string>
+    <string name="act_export_vcard">Export contacts as vCard</string>
+    <string name="act_export_csv">Export contacts as CSV</string>
+    <string name="act_export_numbers">Export phone numbers as text</string>
+    <string name="act_export_sub">Choose where to save</string>
+    <string name="export_started">Exporting…</string>
+    <string name="export_done">Saved. Contacts: %1$d, numbers: %2$d</string>
+    <string name="export_failed">Export failed</string>
+    <string name="export_no_permission">Allow contacts access to export</string>
+    <string name="keys_actions">timer 10 tea  timer\nalarm 7:30  alarm\nevent dentist tomorrow 3pm  calendar event\nuuid  pass 20  roll 2d6  flip  rand 1 10\nupper  lower  title  slug  b64  urlenc\nexport  contacts as vCard or CSV</string>
 </resources>

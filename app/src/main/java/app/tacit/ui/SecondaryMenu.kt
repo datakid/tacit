@@ -27,7 +27,7 @@ object SecondaryMenu {
             entries.add(MenuEntry(activity.getString(labelRes), run))
         }
         val persistent = item.kind in setOf(ItemKind.APP, ItemKind.CONTACT, ItemKind.SETTING, ItemKind.SNIPPET, ItemKind.ACTION) &&
-            !item.key.startsWith("num:") && item.key != "url" && item.key != "mail" && item.key != "crash" &&
+            !item.key.startsWith("num:") && !item.key.startsWith("act:") && item.key != "url" && item.key != "mail" && item.key != "crash" &&
             !(item.key.startsWith("ql:") && item.key.endsWith(":q"))
 
         if (persistent) {
