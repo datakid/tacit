@@ -11,6 +11,7 @@ import app.tacit.Graph
 import app.tacit.R
 import app.tacit.actions.Actions
 import app.tacit.actions.PinShortcut
+import app.tacit.core.AliasRules
 import app.tacit.core.ItemKind
 import app.tacit.core.SearchItem
 import app.tacit.data.AliasText
@@ -54,6 +55,7 @@ object SecondaryMenu {
             }
             ItemKind.CONTACT -> add(R.string.menu_open_contact) { Actions.openContact(activity, item) }
             ItemKind.FILE -> {
+                add(R.string.menu_alias) { editAlias(activity, item, changed) }
                 add(R.string.menu_share) { Actions.shareFile(activity, item.payload) }
                 add(R.string.menu_open_folder) { Actions.openFolder(activity, item.payload) }
                 add(R.string.menu_copy_path) { Graph.clipboard.copy(item.payload, false) }
@@ -107,9 +109,14 @@ object SecondaryMenu {
             .setTitle(item.label)
             .setView(field)
             .setPositiveButton(R.string.save) { _, _ ->
-                Graph.aliases.set(item.key, AliasText.split(field.text.toString()))
+                val aliases = AliasText.split(field.text.toString())
+                Graph.aliases.set(item.key, aliases)
                 Graph.requestRebuild()
                 changed()
+                val others = AliasRules.otherOwners(Graph.aliases.all(), item.key, aliases).take(3).map(AliasLabels::of)
+                if (others.isNotEmpty()) {
+                    Toast.makeText(activity, activity.getString(R.string.alias_shared_with, others.joinToString(", ")), Toast.LENGTH_LONG).show()
+                }
             }
             .setNegativeButton(R.string.cancel, null)
             .show()

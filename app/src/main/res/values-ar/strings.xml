@@ -51,6 +51,8 @@
     <string name="col_aliases">الأسماء المستعارة</string>
     <string name="shared_aliases">مشتركة: %1$s</string>
     <string name="imported_rows">تم استيراد %1$d صف</string>
+    <string name="imported_rows_skipped">تم استيراد %1$d، غير موجود %2$d</string>
+    <string name="alias_shared_with">مستخدم أيضًا في %1$s</string>
 
     <string name="snippets">المقتطفات</string>
     <string name="quicklinks">روابط سريعة</string>

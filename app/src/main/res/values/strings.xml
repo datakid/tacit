@@ -52,6 +52,8 @@
     <string name="col_aliases">Aliases</string>
     <string name="shared_aliases">Shared: %1$s</string>
     <string name="imported_rows">%1$d rows imported</string>
+    <string name="imported_rows_skipped">Imported %1$d, not found %2$d</string>
+    <string name="alias_shared_with">Also used by %1$s</string>
 
     <string name="snippets">Snippets</string>
     <string name="quicklinks">Quicklinks</string>

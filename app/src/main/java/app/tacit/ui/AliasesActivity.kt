@@ -16,8 +16,10 @@ import android.widget.ListView
 import android.widget.TextView
 import app.tacit.Graph
 import app.tacit.R
+import app.tacit.core.AliasRules
 import app.tacit.core.ItemKind
 import app.tacit.core.Normalizer
+import app.tacit.core.PathNames
 import app.tacit.core.SearchItem
 import app.tacit.data.AliasText
 import app.tacit.data.Csv
@@ -36,6 +38,7 @@ class AliasesActivity : Activity() {
         AliasCategory("contact", R.string.cat_contacts, { it.kind == ItemKind.CONTACT }) { Graph.contacts.items() },
         AliasCategory("setting", R.string.cat_settings, { it.kind == ItemKind.SETTING }) { Graph.settings.items() },
         AliasCategory("snippet", R.string.cat_snippets, { it.kind == ItemKind.SNIPPET }) { Graph.snippetSource.items() },
+        AliasCategory("file", R.string.files, { it.kind == ItemKind.FILE }) { aliasedFileItems() },
         AliasCategory("quicklink", R.string.cat_quicklinks, { it.key.startsWith("ql:") && !it.key.endsWith(":q") }) { Graph.quicklinkSource.items() },
         AliasCategory("action", R.string.cat_shortcuts, { it.kind == ItemKind.ACTION && !it.key.startsWith("ql:") }) {
             Graph.apps.items().filter { it.kind == ItemKind.ACTION }
@@ -49,6 +52,7 @@ class AliasesActivity : Activity() {
     private lateinit var palette: Palette
     private lateinit var tabs: LinearLayout
     private lateinit var conflicts: TextView
+    private val labels: Map<String, String> by lazy { Graph.engine.all().associate { it.key to it.label } }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         Ui.applyTheme(this)
@@ -79,7 +83,7 @@ class AliasesActivity : Activity() {
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
                 override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
                 override fun afterTextChanged(s: Editable?) {
-                    filter = Normalizer.normalize(s?.toString().orEmpty())
+                    filter = AliasRules.key(s?.toString().orEmpty())
                     reload()
                 }
             })
@@ -145,7 +149,7 @@ class AliasesActivity : Activity() {
     }
 
     private fun reload() {
-        rows = sourceRows().filter { filter.isEmpty() || Normalizer.normalize(it.label).contains(filter) || currentAliases(it).contains(filter) }
+        rows = sourceRows().filter { filter.isEmpty() || Normalizer.normalize(it.label).contains(filter) || AliasRules.key(currentAliases(it)).contains(filter) }
             .sortedBy { it.label.lowercase() }
         adapter.notifyDataSetChanged()
         updateConflicts()
@@ -173,13 +177,20 @@ class AliasesActivity : Activity() {
         updateConflicts()
     }
 
+    private fun aliasedFileItems(): List<SearchItem> = Graph.aliasedFiles().map { entry ->
+        val path = entry.key.removePrefix("file:")
+        SearchItem(entry.key, ItemKind.FILE, PathNames.name(path), PathNames.folder(path), payload = path)
+    }
+
+    private fun nameOf(key: String): String = labels[key] ?: PathNames.name(key.removePrefix("file:"))
+
     private fun updateConflicts() {
-        val owners = HashMap<String, MutableList<String>>()
         val all = Graph.aliases.all().toMutableMap()
         for ((key, value) in edits) all[key] = AliasText.split(value)
-        for ((key, aliases) in all) for (alias in aliases) owners.getOrPut(alias.lowercase()) { ArrayList() }.add(key)
-        val shared = owners.filterValues { it.size > 1 }.keys.sorted()
-        conflicts.text = if (shared.isEmpty()) "" else getString(R.string.shared_aliases, shared.take(12).joinToString(", "))
+        val shared = AliasRules.shared(all) { it in labels || it.startsWith("file:") }
+        conflicts.text = if (shared.isEmpty()) "" else getString(R.string.shared_aliases, shared.take(4).joinToString("; ") { entry ->
+            entry.alias + ": " + entry.owners.take(3).joinToString(", ") { nameOf(it) }
+        })
         Ui.gone(conflicts, shared.isEmpty())
     }
 
@@ -211,6 +222,7 @@ class AliasesActivity : Activity() {
                     val byLabel = sourceRows().groupBy { Normalizer.normalize(it.label) }
                     val known = sourceRows().associateBy { it.key }
                     var applied = 0
+                    var skipped = 0
                     for (row in Csv.decode(text)) {
                         if (row.size < 2 || row[0] == "key") continue
                         val aliases = row.last()
@@ -218,11 +230,14 @@ class AliasesActivity : Activity() {
                         if (target != null) {
                             edits[target] = aliases
                             applied++
+                        } else {
+                            skipped++
                         }
                     }
                     save()
                     reload()
-                    AlertDialog.Builder(this).setMessage(getString(R.string.imported_rows, applied)).setPositiveButton(R.string.ok, null).show()
+                    val message = if (skipped == 0) getString(R.string.imported_rows, applied) else getString(R.string.imported_rows_skipped, applied, skipped)
+                    AlertDialog.Builder(this).setMessage(message).setPositiveButton(R.string.ok, null).show()
                 }
             }
         }

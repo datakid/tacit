@@ -37,8 +37,11 @@ import app.tacit.TacitApp
 import app.tacit.system.BatteryStatus
 import app.tacit.actions.Actions
 import app.tacit.clip.ClipLock
+import app.tacit.core.AliasRules
 import app.tacit.core.ComposeInput
 import app.tacit.core.ItemKind
+import app.tacit.core.ParsedQuery
+import app.tacit.core.PathNames
 import app.tacit.core.ResultComposer
 import app.tacit.core.Scope
 import app.tacit.core.SearchItem
@@ -58,6 +61,7 @@ class SearchActivity : Activity(), RowCallbacks {
     private val clipLock by lazy { ClipLock(this, Graph.prefs) { runQuery(input.text.toString()) } }
     private var baseRows: List<SearchItem> = emptyList()
     private var fileRows: List<SearchItem> = emptyList()
+    private var aliasedKeys: Set<String> = emptySet()
     private lateinit var batteryText: TextView
     private var batteryRegistered = false
     private var currentQuery = ""
@@ -422,7 +426,13 @@ class SearchActivity : Activity(), RowCallbacks {
         val output = composer.compose(ComposeInput(raw, limit, defaultEngine(), Graph.quicklinkSource::queryRows, ::clipboardItems))
         currentScope = output.parsed.scope
         val sensitiveView = output.parsed.scope == Scope.CLIPBOARD
-        baseRows = if (sensitiveView && clipLock.isLocked()) listOf(clipLock.lockedRow()) else crashRows(raw) + output.rows
+        val aliased = aliasedFileRows(output.parsed)
+        aliasedKeys = if (aliased.isEmpty()) emptySet() else aliased.mapTo(HashSet()) { it.key }
+        baseRows = when {
+            sensitiveView && clipLock.isLocked() -> listOf(clipLock.lockedRow())
+            aliased.isEmpty() -> crashRows(raw) + output.rows
+            else -> crashRows(raw) + aliased + output.rows
+        }
         fileRows = emptyList()
         if (sensitiveView) window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         else window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
@@ -433,13 +443,24 @@ class SearchActivity : Activity(), RowCallbacks {
             Graph.files.search(output.parsed.text, limit) { hits ->
                 Graph.main.post {
                     if (currentQuery == queryAtStart) {
-                        fileRows = hits.map(::fileItem)
+                        fileRows = hits.map(::fileItem).filter { it.key !in aliasedKeys }
                         publish()
                     }
                 }
             }
         } else {
             Graph.files.cancel()
+        }
+    }
+
+    private fun aliasedFileRows(parsed: ParsedQuery): List<SearchItem> {
+        if (parsed.scope != Scope.ALL && parsed.scope != Scope.FILES) return emptyList()
+        val files = Graph.aliasedFiles()
+        if (files.isEmpty()) return emptyList()
+        val present = AliasRules.matching(parsed.text, files).filter { it.key.startsWith("file:content://") || File(it.key.removePrefix("file:")).exists() }
+        return present.take(3).map { entry ->
+            val path = entry.key.removePrefix("file:")
+            SearchItem(entry.key, ItemKind.FILE, PathNames.name(path), PathNames.folder(path), payload = path)
         }
     }
 

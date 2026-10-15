@@ -7,6 +7,8 @@ import android.os.HandlerThread
 import android.os.Looper
 import app.tacit.calc.Calculator
 import app.tacit.clip.ClipboardStore
+import app.tacit.core.AliasEntry
+import app.tacit.core.AliasRules
 import app.tacit.core.IndexOptions
 import app.tacit.core.PrefixGrammar
 import app.tacit.core.SearchEngine
@@ -100,6 +102,22 @@ object Graph {
         snippetSource.reload()
         quicklinkSource.reload()
         rebuild()
+    }
+
+    @Volatile
+    private var fileAliasEntries: List<AliasEntry> = emptyList()
+
+    @Volatile
+    private var fileAliasVersion = -1
+
+    fun aliasedFiles(): List<AliasEntry> {
+        val current = aliases.version
+        if (current != fileAliasVersion) {
+            fileAliasEntries = aliases.all().filterKeys { it.startsWith("file:") }
+                .map { AliasEntry(it.key, it.value.map(AliasRules::key)) }
+            fileAliasVersion = current
+        }
+        return fileAliasEntries
     }
 
     fun reloadQuicklinks() {

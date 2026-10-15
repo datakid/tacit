@@ -1,5 +1,7 @@
 package app.tacit.data
 
+import app.tacit.core.AliasRules
+
 object Csv {
 
     fun encodeRow(fields: List<String>): String = fields.joinToString(",") { field ->
@@ -56,7 +58,7 @@ object Csv {
 
 object AliasText {
     fun split(cell: String): List<String> =
-        cell.split(',', '،', ';').map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+        AliasRules.clean(cell.split(',', '،', ';'))
 
     fun join(values: Collection<String>): String = values.joinToString(", ")
 }
