@@ -52,6 +52,8 @@ A keyboard-first, offline, black-and-white Android launcher. You type, press Ent
 - **Arabic** translation of every screen; RTL layout.
 
 ## Prefixes (editable)
+Typed actions (no prefix): `timer 10 tea` · `alarm 7:30` · `event dentist tomorrow 3pm` · `uuid` · `pass 20` · `roll 2d6` · `flip` · `rand 1 10` · `upper`/`lower`/`title`/`reverse`/`slug`/`b64`/`unb64`/`urlenc`/`urldec` (a keyword alone transforms the clipboard) · `export` (contacts as vCard, CSV or numbers)
+
 `=` calculator · `>` settings · `@` contacts · `/` files · `;` snippets · `cb␠` clipboard · `ddg␠ g␠ w␠ yt␠ map␠` web
 
 Web prefixes need the trailing space, so `ytmusic` still finds the app.
