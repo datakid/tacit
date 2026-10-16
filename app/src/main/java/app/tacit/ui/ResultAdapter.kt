@@ -17,6 +17,7 @@ import app.tacit.Graph
 import app.tacit.R
 import app.tacit.core.ItemKind
 import app.tacit.core.QuicklinkType
+import app.tacit.core.RowDensity
 import app.tacit.core.SearchItem
 import app.tacit.sources.ContactInfo
 
@@ -46,14 +47,16 @@ class ResultAdapter(
 
     private val icons = IconSet(context, palette.foreground)
     private val mediumFace: Typeface = Typeface.create(Typeface.DEFAULT, 500, false)
+    private val density = RowDensity.of(Graph.prefs.density)
     private val dp1 = Ui.dp(context, 1)
     private val dp4 = Ui.dp(context, 4)
     private val dp8 = Ui.dp(context, 8)
     private val dp12 = Ui.dp(context, 12)
-    private val dp32 = Ui.dp(context, 32)
-    private val dp40 = Ui.dp(context, 40)
     private val dp48 = Ui.dp(context, 48)
-    private val dp56 = Ui.dp(context, 56)
+    private val rowHeight = Ui.dp(context, density.rowDp)
+    private val slotSize = Ui.dp(context, density.slotDp)
+    private val circleSize = Ui.dp(context, density.slotDp - 8)
+    private val kindPad = Ui.dp(context, density.kindPadDp)
     private val specs = listOf(
         ActionSpec(ContactAction.CALL, R.drawable.ic_action_call, R.string.action_call),
         ActionSpec(ContactAction.MESSAGE, R.drawable.ic_action_message, R.string.action_message),
@@ -88,8 +91,8 @@ class ResultAdapter(
         val initials = TextView(context)
         val kindIcon = ImageView(context)
         val appIcon = ImageView(context)
-        val title: TextView = Ui.text(context, "", 16f, palette.foreground)
-        val subtitle: TextView = Ui.text(context, "", 13f, palette.muted)
+        val title: TextView = Ui.text(context, "", density.titleSp, palette.foreground)
+        val subtitle: TextView = Ui.text(context, "", density.subtitleSp, palette.muted)
         val actions: LinearLayout = Ui.row(context)
         val actionButtons = ArrayList<ImageView>(specs.size)
         val selectedBackground = GradientDrawable().apply {
@@ -97,11 +100,12 @@ class ResultAdapter(
             cornerRadius = Ui.dp(context, 10).toFloat()
         }
         val kindDrawables = SparseArray<Drawable>()
+        @Volatile
         var boundItem: SearchItem? = null
 
         init {
             root.setPaddingRelative(dp12, dp8, dp4, dp8)
-            root.minimumHeight = dp56
+            root.minimumHeight = rowHeight
             root.tag = this
             root.isFocusable = false
             root.foreground = Ui.ripple(context, palette, 10)
@@ -112,16 +116,16 @@ class ResultAdapter(
             }
 
             initials.gravity = Gravity.CENTER
-            initials.textSize = 13f
+            initials.textSize = density.initialsSp
             initials.typeface = mediumFace
             initials.setTextColor(palette.foreground)
             initials.background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
                 setStroke(dp1, palette.line)
             }
-            kindIcon.setPadding(dp8, dp8, dp8, dp8)
+            kindIcon.setPadding(kindPad, kindPad, kindPad, kindPad)
             appIcon.setPadding(dp4, dp4, dp4, dp4)
-            slot.addView(initials, FrameLayout.LayoutParams(dp32, dp32, Gravity.CENTER))
+            slot.addView(initials, FrameLayout.LayoutParams(circleSize, circleSize, Gravity.CENTER))
             slot.addView(kindIcon, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
             slot.addView(appIcon, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
 
@@ -154,7 +158,7 @@ class ResultAdapter(
             }
             actions.visibility = View.GONE
 
-            root.addView(slot, LinearLayout.LayoutParams(dp40, dp40))
+            root.addView(slot, LinearLayout.LayoutParams(slotSize, slotSize))
             root.addView(texts, Ui.weight())
             root.addView(actions)
         }
@@ -190,7 +194,7 @@ class ResultAdapter(
                 appIcon.setImageBitmap(cached)
                 if (cached == null) {
                     val key = item.key
-                    Graph.icons.load(item.key, item.payload, palette.foreground) { bitmap ->
+                    Graph.icons.load(item.key, item.payload, palette.foreground, { boundItem?.key == key }) { bitmap ->
                         if (boundItem?.key == key) appIcon.setImageBitmap(bitmap)
                     }
                 }

@@ -100,6 +100,11 @@
     <string name="icons_mono">أحادية اللون</string>
     <string name="icons_color">ملونة</string>
     <string name="icons_none">نص فقط</string>
+    <string name="row_size">حجم الصفوف</string>
+    <string name="row_comfortable">مريح</string>
+    <string name="row_compact">مضغوط</string>
+    <string name="app_drawer">درج التطبيقات</string>
+    <string name="drawer_button">التطبيقات</string>
     <string name="bar_bottom">شريط البحث في الأسفل</string>
     <string name="show_clock">الساعة</string>
     <string name="show_date">التاريخ</string>

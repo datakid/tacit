@@ -20,6 +20,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import app.tacit.Graph
 import app.tacit.R
+import app.tacit.core.RowDensity
 
 class Palette(val background: Int, val foreground: Int, val muted: Int, val line: Int, val surface: Int)
 
@@ -33,6 +34,8 @@ data class Look(
     val battery: Boolean,
     val visiblePassword: Boolean,
     val iconMode: String,
+    val density: String,
+    val drawer: Boolean,
     val resultCount: Int,
     val rules: String
 ) {
@@ -53,6 +56,8 @@ object Ui {
             battery = prefs.showBattery,
             visiblePassword = prefs.visiblePasswordInput,
             iconMode = prefs.iconMode,
+            density = RowDensity.of(prefs.density).key,
+            drawer = prefs.drawerEnabled,
             resultCount = prefs.resultCount,
             rules = listOf(
                 prefs.kindOrder, prefs.strictness, prefs.transliterate, prefs.starredAsPins, prefs.defaultEngine, prefs.customEngines,

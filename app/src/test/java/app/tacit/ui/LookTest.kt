@@ -10,7 +10,7 @@ class LookTest {
 
     private val base = Look(
         theme = "system", dark = false, wallpaper = false, barBottom = true, clock = false, date = false,
-        battery = false, visiblePassword = false, iconMode = "mono", resultCount = 8, rules = "a"
+        battery = false, visiblePassword = false, iconMode = "mono", density = "comfortable", drawer = false, resultCount = 8, rules = "a"
     )
 
     @Test
@@ -30,6 +30,8 @@ class LookTest {
             base.copy(battery = true),
             base.copy(visiblePassword = true),
             base.copy(iconMode = "color"),
+            base.copy(density = "compact"),
+            base.copy(drawer = true),
             base.copy(resultCount = 9)
         )
         for (look in changed) {

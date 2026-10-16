@@ -21,6 +21,7 @@ import app.tacit.R
 import app.tacit.TacitApp
 import app.tacit.data.Backup
 import app.tacit.clip.ClipLock
+import app.tacit.core.RowDensity
 import app.tacit.files.GrantedTrees
 import app.tacit.files.StorageAccess
 import java.io.File
@@ -60,6 +61,9 @@ class SettingsActivity : Activity() {
             prefs.theme, onPick = { prefs.theme = it }, after = { recreate() })
         choice(R.string.icons, listOf("mono", "color", "none"), listOf(R.string.icons_mono, R.string.icons_color, R.string.icons_none),
             prefs.iconMode) { prefs.iconMode = it; Graph.icons.clear() }
+        choice(R.string.row_size, listOf("comfortable", "compact"), listOf(R.string.row_comfortable, R.string.row_compact),
+            RowDensity.of(prefs.density).key) { prefs.density = it; Graph.icons.clear() }
+        toggle(R.string.app_drawer, prefs.drawerEnabled) { prefs.drawerEnabled = it }
         toggle(R.string.bar_bottom, prefs.barAtBottom) { prefs.barAtBottom = it }
         toggle(R.string.show_clock, prefs.showClock) { prefs.showClock = it }
         toggle(R.string.show_date, prefs.showDate) { prefs.showDate = it }

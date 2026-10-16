@@ -40,6 +40,7 @@ import app.tacit.actions.Actions
 import app.tacit.clip.ClipLock
 import app.tacit.core.AliasRules
 import app.tacit.core.ComposeInput
+import app.tacit.core.DrawerList
 import app.tacit.core.ItemKind
 import app.tacit.core.ParsedQuery
 import app.tacit.core.PathNames
@@ -69,7 +70,12 @@ class SearchActivity : Activity(), RowCallbacks {
     private var currentScope = Scope.ALL
     private var backCallback: Any? = null
     private var look: Look? = null
-    private val refreshListener: () -> Unit = { if (::input.isInitialized) runQuery(input.text.toString()) }
+    private var drawerOpen = false
+    private var drawerSource: Array<SearchItem>? = null
+    private var drawerData: DrawerList? = null
+    private var strip: LetterStrip? = null
+    private var bubble: TextView? = null
+    private val refreshListener: () -> Unit = { if (::input.isInitialized) refreshRows() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         Ui.applyTheme(this)
@@ -130,6 +136,9 @@ class SearchActivity : Activity(), RowCallbacks {
     private fun buildViews() {
         val current = Ui.look(this)
         look = current
+        drawerOpen = false
+        strip = null
+        bubble = null
         val palette = Ui.palette(this)
         if (current.wallpaper) {
             window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
@@ -202,6 +211,31 @@ class SearchActivity : Activity(), RowCallbacks {
             clipToPadding = false
         }
 
+        var listView: View = list
+        if (current.drawer) {
+            val host = FrameLayout(this)
+            host.addView(list, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+            val letterStrip = LetterStrip(this, palette.muted).apply {
+                visibility = View.GONE
+                onPick = ::pickLetter
+                onActive = ::showBubble
+            }
+            host.addView(letterStrip, FrameLayout.LayoutParams(Ui.dp(this, 28), ViewGroup.LayoutParams.MATCH_PARENT, Gravity.END))
+            val letterBubble = Ui.text(this, "", 32f, palette.foreground, bold = true).apply {
+                gravity = Gravity.CENTER
+                visibility = View.GONE
+                background = android.graphics.drawable.GradientDrawable().apply {
+                    setColor(palette.surface)
+                    setStroke(Ui.dp(context, 1), palette.line)
+                    cornerRadius = Ui.dp(context, 14).toFloat()
+                }
+            }
+            host.addView(letterBubble, FrameLayout.LayoutParams(Ui.dp(this, 64), Ui.dp(this, 64), Gravity.CENTER))
+            strip = letterStrip
+            bubble = letterBubble
+            listView = host
+        }
+
         emptyHint = Ui.text(this, "", 13f, palette.muted).apply {
             gravity = Gravity.CENTER
             setPadding(0, Ui.dp(context, 8), 0, Ui.dp(context, 8))
@@ -248,11 +282,13 @@ class SearchActivity : Activity(), RowCallbacks {
                 enter
             }
             setOnKeyListener { _, keyCode, event -> handleKey(keyCode, event) }
+            setOnClickListener { if (drawerOpen) closeDrawer(true) }
             addTextChangedListener(object : TextWatcher {
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
                 override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
                 override fun afterTextChanged(s: Editable?) {
                     Ui.gone(clearButton, s.isNullOrEmpty())
+                    if (drawerOpen && !s.isNullOrEmpty()) closeDrawer(false)
                     runQuery(s?.toString().orEmpty())
                 }
             })
@@ -274,24 +310,33 @@ class SearchActivity : Activity(), RowCallbacks {
             isClickable = true
             setOnClickListener { startActivity(Intent(context, SettingsActivity::class.java)) }
         }
+        val appsButton = if (current.drawer) ImageView(this).apply {
+            setImageDrawable(strongIcons.make(R.drawable.ic_bar_apps))
+            scaleType = ImageView.ScaleType.CENTER
+            contentDescription = getString(R.string.drawer_button)
+            background = Ui.ripple(context, palette, oval = true)
+            isClickable = true
+            setOnClickListener { if (drawerOpen) closeDrawer(true) else openDrawer() }
+        } else null
         val bar = Ui.row(this).apply {
             val pad = Ui.dp(context, 12)
             setPaddingRelative(pad, pad / 2, pad / 2, pad)
             addView(field, Ui.weight())
+            if (appsButton != null) addView(appsButton, LinearLayout.LayoutParams(Ui.dp(context, 48), Ui.dp(context, 48)))
             addView(settingsButton, LinearLayout.LayoutParams(Ui.dp(context, 48), Ui.dp(context, 48)))
         }
 
         val listParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f)
         if (current.barBottom) {
             root.addView(clockBlock, Ui.matchWrap())
-            root.addView(list, listParams)
+            root.addView(listView, listParams)
             root.addView(emptyHint, Ui.matchWrap())
             root.addView(bar, Ui.matchWrap())
         } else {
             root.addView(bar, Ui.matchWrap())
             root.addView(clockBlock, Ui.matchWrap())
             root.addView(emptyHint, Ui.matchWrap())
-            root.addView(list, listParams)
+            root.addView(listView, listParams)
         }
         setContentView(FrameLayout(this).apply { addView(root) })
         Ui.applyBars(window, current.dark)
@@ -319,7 +364,9 @@ class SearchActivity : Activity(), RowCallbacks {
     }
 
     private fun handleBack() {
-        if (input.text.isNotEmpty()) {
+        if (drawerOpen) {
+            closeDrawer(true)
+        } else if (input.text.isNotEmpty()) {
             input.setText("")
         } else if (!isDefaultHome()) {
             moveTaskToBack(true)
@@ -334,6 +381,7 @@ class SearchActivity : Activity(), RowCallbacks {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        closeDrawer(false)
         input.setText("")
         list.setSelection(0)
         showKeyboard()
@@ -343,7 +391,7 @@ class SearchActivity : Activity(), RowCallbacks {
         super.onResume()
         if (refreshLook()) return
         applyRecentsPreference()
-        showKeyboard()
+        syncKeyboard()
         if (Graph.prefs.showBattery) {
             val filter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
             val sticky = if (Build.VERSION.SDK_INT >= 33) registerReceiver(batteryReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
@@ -372,7 +420,7 @@ class SearchActivity : Activity(), RowCallbacks {
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         if (!hasFocus) return
-        showKeyboard()
+        syncKeyboard()
         if (Graph.prefs.clipboardEnabled) {
             Graph.worker.post(captureClip)
             Graph.worker.postDelayed(captureClip, CLIP_RETRY_MS)
@@ -387,7 +435,10 @@ class SearchActivity : Activity(), RowCallbacks {
         super.onStop()
         Graph.files.cancel()
         clipLock.lock()
-        if (Graph.prefs.closeAfterAction) input.setText("")
+        if (Graph.prefs.closeAfterAction) {
+            closeDrawer(false)
+            input.setText("")
+        }
         window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
     }
 
@@ -402,9 +453,75 @@ class SearchActivity : Activity(), RowCallbacks {
         manager?.appTasks?.firstOrNull()?.setExcludeFromRecents(Graph.prefs.excludeFromRecents)
     }
 
+    private fun syncKeyboard() {
+        if (drawerOpen) hideKeyboard() else showKeyboard()
+    }
+
+    private fun hideKeyboard() {
+        if (Build.VERSION.SDK_INT >= 30) window.insetsController?.hide(WindowInsets.Type.ime())
+        getSystemService(InputMethodManager::class.java)?.hideSoftInputFromWindow(input.windowToken, 0)
+    }
+
+    private fun drawerRows(): DrawerList {
+        val all = Graph.engine.all()
+        val cached = drawerData
+        if (cached != null && drawerSource === all) return cached
+        val built = DrawerList.build(all)
+        drawerSource = all
+        drawerData = built
+        return built
+    }
+
+    private fun showDrawerRows() {
+        val data = drawerRows()
+        adapter.submit(data.items)
+        strip?.setLetters(data.letters)
+    }
+
+    private fun openDrawer() {
+        if (drawerOpen || strip == null) return
+        if (input.text.isNotEmpty()) input.setText("")
+        drawerOpen = true
+        list.isStackFromBottom = false
+        list.setPaddingRelative(Ui.dp(this, 8), 0, Ui.dp(this, 36), 0)
+        adapter.selected = -1
+        showDrawerRows()
+        strip?.visibility = View.VISIBLE
+        emptyHint.visibility = View.GONE
+        list.setSelection(0)
+        hideKeyboard()
+    }
+
+    private fun closeDrawer(withKeyboard: Boolean) {
+        if (!drawerOpen) return
+        drawerOpen = false
+        strip?.visibility = View.GONE
+        bubble?.visibility = View.GONE
+        list.setPadding(Ui.dp(this, 8), 0, Ui.dp(this, 8), 0)
+        list.isStackFromBottom = look?.barBottom ?: Graph.prefs.barAtBottom
+        runQuery(input.text.toString())
+        if (withKeyboard) showKeyboard()
+    }
+
+    private fun pickLetter(section: Int) {
+        val data = drawerData ?: return
+        bubble?.text = data.letters[section].toString()
+        list.setSelection(data.positionOf(section))
+    }
+
+    private fun showBubble(active: Boolean) {
+        bubble?.visibility = if (active) View.VISIBLE else View.GONE
+    }
+
+    private fun refreshRows() {
+        if (drawerOpen) showDrawerRows() else runQuery(input.text.toString())
+    }
+
     private fun showKeyboard() {
+        if (drawerOpen) return
         input.requestFocus()
         input.post {
+            if (drawerOpen) return@post
             if (Build.VERSION.SDK_INT >= 30) {
                 window.insetsController?.show(WindowInsets.Type.ime())
             }
@@ -472,6 +589,7 @@ class SearchActivity : Activity(), RowCallbacks {
     }
 
     private fun publish() {
+        if (drawerOpen) return
         val rows = ArrayList<SearchItem>(baseRows.size + fileRows.size)
         val web = baseRows.lastOrNull()?.takeIf { it.kind == ItemKind.WEB }
         rows.addAll(if (web != null) baseRows.dropLast(1) else baseRows)
@@ -555,7 +673,7 @@ class SearchActivity : Activity(), RowCallbacks {
     }
 
     override fun onSecondary(item: SearchItem, view: View) {
-        SecondaryMenu.show(this, item) { runQuery(input.text.toString()) }
+        SecondaryMenu.show(this, item) { refreshRows() }
     }
 
     override fun onContactAction(item: SearchItem, action: ContactAction, view: View) {

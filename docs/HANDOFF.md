@@ -45,14 +45,14 @@ The code was written **without a compiler**. Your first job is to get CI green. 
 - Speed is requirement number one. Don't add Compose, AppCompat, coroutines or a dependency-injection framework.
 
 ## Architecture
-- `core/`: pure Kotlin, no Android (normalizer, transliteration, scorer, search engine, query grammar, result composer, quick actions, contact file formats). Unit-tested.
+- `core/`: pure Kotlin, no Android (normalizer, transliteration, scorer, search engine, query grammar, result composer, quick actions, contact file formats, drawer list, row densities). Unit-tested.
 - `calc/`: calculator, units, city→zone table. Unit-tested.
 - `clip/`: sensitive detectors (tested) and the encrypted clipboard store.
 - `data/`: alias store, snippet store, CSV, JSON backup, contact export.
 - `files/`: file index (scan, persist, background search) and matcher (tested).
 - `sources/`: apps, contacts, Settings discovery, snippets → `SearchItem`s.
 - `actions/`: every outgoing intent (launch, dial, SMS, WhatsApp, Settings, files, web, timer, alarm, calendar), the typed-action rows (`ActionRows`), the contact export screen and the read-only file provider.
-- `ui/`: search screen (platform `ListView`, no RecyclerView), alias tables, snippets, settings, long-press menu, icon cache.
+- `ui/`: search screen (platform `ListView`, no RecyclerView), alias tables, snippets, settings, long-press menu, icon cache, app drawer letter strip.
 - `system/`: tile, widget, assistant stubs.
 - `Graph`: the shared singleton with a single worker `HandlerThread`. `IndexCache` writes the binary snapshot that's read at startup.
 

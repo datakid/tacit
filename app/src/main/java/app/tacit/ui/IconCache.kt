@@ -14,33 +14,61 @@ import android.os.Build
 import android.util.LruCache
 import app.tacit.Graph
 import app.tacit.Prefs
+import app.tacit.core.RowDensity
 
 class IconCache(private val context: Context, private val prefs: Prefs) {
 
     private val launcherApps = context.getSystemService(LauncherApps::class.java)
-    private val size = Ui.dp(context, 32)
-    private val memory = object : LruCache<String, Bitmap>(8 * 1024 * 1024) {
+    private val memory = object : LruCache<String, Bitmap>(12 * 1024 * 1024) {
         override fun sizeOf(key: String, value: Bitmap): Int = value.byteCount
     }
+    private var seenMode = ""
+    private var seenDark = false
+    private var seenDensity = ""
+    @Volatile
+    private var generation = 0
 
-    fun cached(key: String): Bitmap? = memory.get(key + mode())
+    fun cached(key: String): Bitmap? {
+        sync()
+        return memory.get(key)
+    }
 
-    fun load(key: String, payload: String, foreground: Int, done: (Bitmap?) -> Unit) {
+    fun load(key: String, payload: String, foreground: Int, wanted: () -> Boolean, done: (Bitmap?) -> Unit) {
         if (prefs.iconMode == "none") return done(null)
-        val cacheKey = key + mode()
-        memory.get(cacheKey)?.let { return done(it) }
+        sync()
+        memory.get(key)?.let { return done(it) }
+        val born = generation
+        val size = Ui.dp(context, RowDensity.of(prefs.density).iconDp)
         Graph.worker.post {
-            val bitmap = runCatching { render(payload, foreground) }.getOrNull()
-            if (bitmap != null) memory.put(cacheKey, bitmap)
-            Graph.main.post { done(bitmap) }
+            if (!wanted() || born != generation) return@post
+            val bitmap = runCatching { render(payload, foreground, size) }.getOrNull()
+            Graph.main.post {
+                if (born == generation) {
+                    if (bitmap != null) memory.put(key, bitmap)
+                    done(bitmap)
+                }
+            }
         }
     }
 
-    fun clear() = memory.evictAll()
+    fun clear() {
+        generation++
+        memory.evictAll()
+    }
 
-    private fun mode(): String = prefs.iconMode + Ui.isDark(context)
+    private fun sync() {
+        val mode = prefs.iconMode
+        val dark = Ui.isDark(context)
+        val density = prefs.density
+        if (mode != seenMode || dark != seenDark || density != seenDensity) {
+            seenMode = mode
+            seenDark = dark
+            seenDensity = density
+            clear()
+        }
+    }
 
-    private fun render(payload: String, foreground: Int): Bitmap? {
+    private fun render(payload: String, foreground: Int, size: Int): Bitmap? {
         val parts = payload.split('|')
         val component = ComponentName.unflattenFromString(parts[0]) ?: return null
         val user = Graph.apps.userFor(parts.getOrNull(1)?.toLongOrNull())
@@ -55,17 +83,17 @@ class IconCache(private val context: Context, private val prefs: Prefs) {
                 val mutated = monochrome.mutate()
                 mutated.setTint(foreground)
                 drawable = mutated
-                return draw(drawable, scale = 1.5f)
+                return draw(drawable, 1.5f, size)
             }
         }
         if (mono) {
             drawable = drawable.mutate()
             drawable.colorFilter = ColorMatrixColorFilter(ColorMatrix().apply { setSaturation(0f) })
         }
-        return draw(drawable, 1f)
+        return draw(drawable, 1f, size)
     }
 
-    private fun draw(drawable: Drawable, scale: Float): Bitmap {
+    private fun draw(drawable: Drawable, scale: Float, size: Int): Bitmap {
         val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         val inset = ((size * scale - size) / 2).toInt()

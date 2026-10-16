@@ -14,6 +14,8 @@ class Prefs(context: Context) {
 
     var theme by text("theme", "system")
     var iconMode by text("icon_mode", "mono")
+    var density by text("density", "comfortable")
+    var drawerEnabled by flag("drawer", false)
     var showWallpaper by flag("wallpaper", false)
     var barAtBottom by flag("bar_bottom", true)
     var showClock by flag("clock", false)
