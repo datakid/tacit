@@ -9,6 +9,7 @@ import android.content.IntentFilter
 import android.content.res.Configuration
 import android.graphics.PixelFormat
 import android.graphics.Rect
+import android.graphics.Typeface
 import android.os.Build
 import android.os.Bundle
 import android.text.Editable
@@ -41,6 +42,7 @@ import app.tacit.clip.ClipLock
 import app.tacit.core.AliasRules
 import app.tacit.core.ComposeInput
 import app.tacit.core.DrawerList
+import app.tacit.core.DrawerTab
 import app.tacit.core.ItemKind
 import app.tacit.core.ParsedQuery
 import app.tacit.core.PathNames
@@ -72,7 +74,14 @@ class SearchActivity : Activity(), RowCallbacks {
     private var look: Look? = null
     private var drawerOpen = false
     private var drawerSource: Array<SearchItem>? = null
-    private var drawerData: DrawerList? = null
+    private val drawerCache = arrayOfNulls<DrawerList>(DrawerTab.entries.size)
+    private var shownDrawer: DrawerList? = null
+    private var drawerTab = DrawerTab.APPS
+    private var tabs: LinearLayout? = null
+    private var tabViews: Array<TextView> = emptyArray()
+    private var tabChips: Array<android.graphics.drawable.GradientDrawable> = emptyArray()
+    private var tabInk = 0
+    private var tabMuted = 0
     private var strip: LetterStrip? = null
     private var bubble: TextView? = null
     private val refreshListener: () -> Unit = { if (::input.isInitialized) refreshRows() }
@@ -137,8 +146,10 @@ class SearchActivity : Activity(), RowCallbacks {
         val current = Ui.look(this)
         look = current
         drawerOpen = false
+        drawerTab = DrawerTab.APPS
         strip = null
         bubble = null
+        tabs = null
         val palette = Ui.palette(this)
         if (current.wallpaper) {
             window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
@@ -234,6 +245,32 @@ class SearchActivity : Activity(), RowCallbacks {
             strip = letterStrip
             bubble = letterBubble
             listView = host
+            if (current.drawerSettings) {
+                tabInk = palette.foreground
+                tabMuted = palette.muted
+                tabViews = arrayOf(makeTab(R.string.drawer_button, DrawerTab.APPS), makeTab(R.string.drawer_tab_settings, DrawerTab.SETTINGS))
+                tabChips = Array(tabViews.size) {
+                    android.graphics.drawable.GradientDrawable().apply {
+                        setColor(palette.surface)
+                        cornerRadius = Ui.dp(this@SearchActivity, 10).toFloat()
+                    }
+                }
+                val tabRow = Ui.row(this).apply {
+                    setPaddingRelative(Ui.dp(context, 8), Ui.dp(context, 4), Ui.dp(context, 8), Ui.dp(context, 4))
+                    visibility = View.GONE
+                    for (view in tabViews) {
+                        addView(view, LinearLayout.LayoutParams(0, Ui.dp(context, 40), 1f).apply {
+                            marginStart = Ui.dp(context, 4)
+                            marginEnd = Ui.dp(context, 4)
+                        })
+                    }
+                }
+                tabs = tabRow
+                listView = Ui.column(this).apply {
+                    addView(tabRow, Ui.matchWrap())
+                    addView(host, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+                }
+            }
         }
 
         emptyHint = Ui.text(this, "", 13f, palette.muted).apply {
@@ -462,18 +499,48 @@ class SearchActivity : Activity(), RowCallbacks {
         getSystemService(InputMethodManager::class.java)?.hideSoftInputFromWindow(input.windowToken, 0)
     }
 
+    private fun makeTab(label: Int, tab: DrawerTab): TextView = TextView(this).apply {
+        text = getString(label)
+        textSize = 15f
+        gravity = Gravity.CENTER
+        typeface = Typeface.create(Typeface.DEFAULT, 500, false)
+        isClickable = true
+        setOnClickListener { selectTab(tab) }
+    }
+
+    private fun styleTabs() {
+        for (index in tabViews.indices) {
+            val chosen = index == drawerTab.ordinal
+            tabViews[index].setTextColor(if (chosen) tabInk else tabMuted)
+            tabViews[index].background = if (chosen) tabChips[index] else null
+            tabViews[index].isSelected = chosen
+        }
+    }
+
+    private fun selectTab(tab: DrawerTab) {
+        if (!drawerOpen || tab == drawerTab) return
+        drawerTab = tab
+        styleTabs()
+        showDrawerRows()
+        list.setSelection(0)
+    }
+
     private fun drawerRows(): DrawerList {
         val all = Graph.engine.all()
-        val cached = drawerData
-        if (cached != null && drawerSource === all) return cached
-        val built = DrawerList.build(all)
-        drawerSource = all
-        drawerData = built
+        if (drawerSource !== all) {
+            drawerCache.fill(null)
+            drawerSource = all
+        }
+        val cached = drawerCache[drawerTab.ordinal]
+        if (cached != null) return cached
+        val built = DrawerList.build(all, drawerTab)
+        drawerCache[drawerTab.ordinal] = built
         return built
     }
 
     private fun showDrawerRows() {
         val data = drawerRows()
+        shownDrawer = data
         adapter.submit(data.items)
         strip?.setLetters(data.letters)
     }
@@ -487,6 +554,8 @@ class SearchActivity : Activity(), RowCallbacks {
         adapter.selected = -1
         showDrawerRows()
         strip?.visibility = View.VISIBLE
+        tabs?.visibility = View.VISIBLE
+        styleTabs()
         emptyHint.visibility = View.GONE
         list.setSelection(0)
         hideKeyboard()
@@ -496,6 +565,7 @@ class SearchActivity : Activity(), RowCallbacks {
         if (!drawerOpen) return
         drawerOpen = false
         strip?.visibility = View.GONE
+        tabs?.visibility = View.GONE
         bubble?.visibility = View.GONE
         list.setPadding(Ui.dp(this, 8), 0, Ui.dp(this, 8), 0)
         list.isStackFromBottom = look?.barBottom ?: Graph.prefs.barAtBottom
@@ -504,7 +574,7 @@ class SearchActivity : Activity(), RowCallbacks {
     }
 
     private fun pickLetter(section: Int) {
-        val data = drawerData ?: return
+        val data = shownDrawer ?: return
         bubble?.text = data.letters[section].toString()
         list.setSelection(data.positionOf(section))
     }

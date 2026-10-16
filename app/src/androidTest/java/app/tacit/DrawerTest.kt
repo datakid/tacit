@@ -1,6 +1,7 @@
 package app.tacit
 
 import android.app.Activity
+import android.app.Instrumentation
 import android.os.SystemClock
 import android.view.MotionEvent
 import android.view.View
@@ -10,12 +11,17 @@ import android.widget.ListView
 import android.widget.TextView
 import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ActivityScenario
+import androidx.test.espresso.intent.Intents
+import androidx.test.espresso.intent.Intents.intended
+import androidx.test.espresso.intent.Intents.intending
+import androidx.test.espresso.intent.matcher.IntentMatchers.hasAction
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.UiDevice
 import androidx.test.uiautomator.Until
 import app.tacit.core.DrawerList
+import app.tacit.core.DrawerTab
 import app.tacit.core.ItemKind
 import app.tacit.core.SearchItem
 import app.tacit.fixtures.Fixtures
@@ -39,6 +45,12 @@ class DrawerTest {
     private val device = UiDevice.getInstance(instrumentation)
     private val prefs get() = Graph.prefs
     private val apps = Fixtures.apps(120)
+    private val systemSettings = listOf(
+        "Wi-Fi", "Bluetooth", "Display", "Battery", "Sound", "Storage", "Location", "Accessibility", "Date and time", "Language"
+    ).map { SearchItem("setting:fixture/$it", ItemKind.SETTING, it, "Settings", payload = "action|android.settings.SETTINGS") }
+    private val perAppSettings = apps.take(5).map {
+        SearchItem("appinfo:fixture/${it.label}", ItemKind.SETTING, "${it.label} info", "App", payload = "appinfo|fixture")
+    }
     private var scenario: ActivityScenario<SearchActivity>? = null
 
     @Before
@@ -49,7 +61,7 @@ class DrawerTest {
         prefs.drawerEnabled = true
         prefs.resultCount = 8
         Graph.applyPrefs()
-        Graph.useItemsForTesting(apps + Fixtures.contacts(40))
+        Graph.useItemsForTesting(apps + Fixtures.contacts(40) + systemSettings + perAppSettings)
     }
 
     @After
@@ -102,6 +114,18 @@ class DrawerTest {
         val deadline = System.currentTimeMillis() + 15_000
         while (!condition() && System.currentTimeMillis() < deadline) Thread.sleep(100)
         assertTrue(message, condition())
+    }
+
+    private fun settingsTabLabel() = context.getString(R.string.drawer_tab_settings)
+
+    private fun openSettingsTab() {
+        prefs.drawerSettings = true
+        launch()
+        openDrawer()
+        val tab = device.wait(Until.findObject(By.text(settingsTabLabel())), 5000)
+        assertNotNull("settings tab missing", tab)
+        tab.click()
+        waitFor("settings list did not show") { rows().isNotEmpty() && rows().all { it.kind == ItemKind.SETTING } }
     }
 
     private fun openDrawer() {
@@ -271,6 +295,68 @@ class DrawerTest {
             waitFor("row size was not saved") { prefs.density == "compact" }
             clickText(context.getString(R.string.app_drawer))
             waitFor("drawer switch was not saved") { prefs.drawerEnabled }
+        }
+    }
+
+    @Test
+    fun noTabsUnlessTheSettingsTabIsOn() {
+        launch()
+        openDrawer()
+        assertTrue(!device.hasObject(By.text(settingsTabLabel())))
+    }
+
+    @Test
+    fun settingsTabListsSystemSettingsAlphabeticallyWithoutPerAppRows() {
+        openSettingsTab()
+        val shown = rows()
+        assertEquals(systemSettings.size, shown.size)
+        assertTrue(shown.none { it.key.startsWith("appinfo:") })
+        val keys = shown.map { DrawerList.sortKey(it) }
+        assertEquals(keys.sorted(), keys)
+        val expected = DrawerList.build((apps + systemSettings + perAppSettings).toTypedArray(), DrawerTab.SETTINGS)
+        assertEquals(expected.letters.size, read { activity -> strip(activity)!!.letterCount() })
+    }
+
+    @Test
+    fun switchingTabsRestoresTheApps() {
+        openSettingsTab()
+        val back = device.wait(Until.findObject(By.text(context.getString(R.string.drawer_button))), 5000)
+        assertNotNull("apps tab missing", back)
+        back.click()
+        waitFor("apps did not return") { rows().size == apps.size && rows().all { it.kind == ItemKind.APP } }
+        assertTrue(stripShown())
+    }
+
+    @Test
+    fun backFromTheSettingsTabClosesTheDrawer() {
+        openSettingsTab()
+        device.pressBack()
+        waitFor("drawer did not close") { !stripShown() }
+        assertTrue(!device.hasObject(By.text(settingsTabLabel())))
+    }
+
+    @Test
+    fun aSettingsRowOpensItsScreenAndTheDrawerStays() {
+        Intents.init()
+        try {
+            intending(ExternalIntents.matcher()).respondWith(Instrumentation.ActivityResult(Activity.RESULT_OK, null))
+            openSettingsTab()
+            scenario!!.onActivity { list(it).getChildAt(0).performClick() }
+            intended(hasAction("android.settings.SETTINGS"))
+            assertTrue(stripShown())
+        } finally {
+            Intents.release()
+        }
+    }
+
+    @Test
+    fun settingsTabSwitchIsSavedFromSettings() {
+        prefs.drawerSettings = false
+        ActivityScenario.launch(SettingsActivity::class.java).use {
+            val toggle = device.wait(Until.findObject(By.text(context.getString(R.string.drawer_settings))), 5000)
+            assertNotNull("settings tab switch missing", toggle)
+            toggle.click()
+            waitFor("switch was not saved") { prefs.drawerSettings }
         }
     }
 }

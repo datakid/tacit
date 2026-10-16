@@ -36,6 +36,7 @@ data class Look(
     val iconMode: String,
     val density: String,
     val drawer: Boolean,
+    val drawerSettings: Boolean,
     val resultCount: Int,
     val rules: String
 ) {
@@ -58,6 +59,7 @@ object Ui {
             iconMode = prefs.iconMode,
             density = RowDensity.of(prefs.density).key,
             drawer = prefs.drawerEnabled,
+            drawerSettings = prefs.drawerSettings,
             resultCount = prefs.resultCount,
             rules = listOf(
                 prefs.kindOrder, prefs.strictness, prefs.transliterate, prefs.starredAsPins, prefs.defaultEngine, prefs.customEngines,

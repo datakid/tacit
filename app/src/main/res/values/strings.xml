@@ -108,6 +108,8 @@
     <string name="row_compact">Compact</string>
     <string name="app_drawer">App drawer</string>
     <string name="drawer_button">Apps</string>
+    <string name="drawer_settings">Settings tab in drawer</string>
+    <string name="drawer_tab_settings">System settings</string>
     <string name="bar_bottom">Search bar at bottom</string>
     <string name="show_clock">Clock</string>
     <string name="show_date">Date</string>

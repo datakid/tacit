@@ -47,7 +47,7 @@ A keyboard-first, offline, black-and-white Android launcher. You type, press Ent
   - Number bases (`255 in hex`), time zones (`5pm dubai in tokyo`, `time in cairo`), dates (`days until dec 25`, `next friday + 3 weeks`, `today - 2024-01-01`).
   - Enter copies the result.
 - **Web search**: DuckDuckGo (default), Google, Wikipedia, YouTube, OpenStreetMap. Engines are editable in Settings. The query opens in your browser.
-- **Row size and app drawer**: rows are Comfortable (64 dp, large icons) by default or Compact (56 dp), in Settings → Look. An optional app drawer, off by default, adds an Apps button beside Settings: an A–Z list of installed apps with a letter strip. Long-press works as in search.
+- **Row size and app drawer**: rows are Comfortable (64 dp, large icons) by default or Compact (56 dp), in Settings → Look. An optional app drawer, off by default, adds an Apps button beside Settings: an A–Z list of installed apps with a letter strip. Long-press works as in search. A System settings tab can be added next to Apps (Settings → Look).
 - **Ways to open it**: default Home, Assistant (minimal voice service stub, no voice features), Quick Settings tile, Tacit's own search-bar widget for other launchers, launcher app shortcuts, hardware keys (↑ ↓ Enter Tab Esc).
 - Export and import of everything as one JSON file. Offline crash log with "Share last crash". Backup is disabled.
 - **Arabic** translation of every screen; RTL layout.

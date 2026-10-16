@@ -63,7 +63,8 @@ class SettingsActivity : Activity() {
             prefs.iconMode) { prefs.iconMode = it; Graph.icons.clear() }
         choice(R.string.row_size, listOf("comfortable", "compact"), listOf(R.string.row_comfortable, R.string.row_compact),
             RowDensity.of(prefs.density).key) { prefs.density = it; Graph.icons.clear() }
-        toggle(R.string.app_drawer, prefs.drawerEnabled) { prefs.drawerEnabled = it }
+        toggle(R.string.app_drawer, prefs.drawerEnabled) { prefs.drawerEnabled = it; rebuildSoon() }
+        if (prefs.drawerEnabled) toggle(R.string.drawer_settings, prefs.drawerSettings) { prefs.drawerSettings = it }
         toggle(R.string.bar_bottom, prefs.barAtBottom) { prefs.barAtBottom = it }
         toggle(R.string.show_clock, prefs.showClock) { prefs.showClock = it }
         toggle(R.string.show_date, prefs.showDate) { prefs.showDate = it }

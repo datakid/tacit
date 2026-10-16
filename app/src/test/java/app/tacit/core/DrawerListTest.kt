@@ -141,4 +141,49 @@ class DrawerListTest {
     fun densityKeysAreUnique() {
         assertEquals(RowDensity.entries.size, RowDensity.entries.map { it.key }.toSet().size)
     }
+
+    private fun setting(label: String, key: String = "setting:$label", subtitle: String = "Settings") =
+        SearchItem(key, ItemKind.SETTING, label, subtitle)
+
+    private val mixed = arrayOf(
+        app("Maps"),
+        setting("Wi-Fi"),
+        setting("Display"),
+        setting("Flashlight", "toggle:flashlight", "Toggle"),
+        setting("Maps info", "appinfo:maps", "App"),
+        setting("Maps notifications", "appnotif:maps", "App"),
+        setting("Maps settings", "appprefs:maps", "App"),
+        SearchItem("contact:1", ItemKind.CONTACT, "Aaron")
+    )
+
+    @Test
+    fun settingsTabListsSystemSettingsAndLeavesPerAppRowsOut() {
+        assertEquals(listOf("Display", "Flashlight", "Wi-Fi"), labels(DrawerList.build(mixed, DrawerTab.SETTINGS)))
+        assertEquals(listOf("Maps"), labels(DrawerList.build(mixed, DrawerTab.APPS)))
+        assertEquals(listOf("Maps"), labels(DrawerList.build(mixed)))
+    }
+
+    @Test
+    fun settingsTabHasItsOwnSections() {
+        val list = DrawerList.build(mixed, DrawerTab.SETTINGS)
+        assertEquals("DFW", String(list.letters))
+        assertEquals(listOf(0, 1, 2), list.starts.toList())
+        assertEquals(2, list.sectionOf(2))
+    }
+
+    @Test
+    fun everyItemBelongsToAtMostOneTab() {
+        for (item in mixed) {
+            val tabs = DrawerTab.entries.count { it.accepts(item) }
+            assertTrue("${item.key} is in $tabs tabs", tabs <= 1)
+        }
+        assertEquals(setOf("setting:Wi-Fi", "setting:Display", "toggle:flashlight"),
+            mixed.filter { DrawerTab.SETTINGS.accepts(it) }.map { it.key }.toSet())
+    }
+
+    @Test
+    fun emptyAndOtherKindsGiveEmptySettingsTab() {
+        assertEquals(0, DrawerList.build(emptyArray(), DrawerTab.SETTINGS).size)
+        assertEquals(0, DrawerList.build(arrayOf(app("Maps")), DrawerTab.SETTINGS).size)
+    }
 }

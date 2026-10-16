@@ -105,6 +105,8 @@
     <string name="row_compact">مضغوط</string>
     <string name="app_drawer">درج التطبيقات</string>
     <string name="drawer_button">التطبيقات</string>
+    <string name="drawer_settings">تبويب الإعدادات في الدرج</string>
+    <string name="drawer_tab_settings">إعدادات النظام</string>
     <string name="bar_bottom">شريط البحث في الأسفل</string>
     <string name="show_clock">الساعة</string>
     <string name="show_date">التاريخ</string>

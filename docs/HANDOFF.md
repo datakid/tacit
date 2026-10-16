@@ -69,3 +69,6 @@ The code was written **without a compiler**. Your first job is to get CI green. 
 - [ ] Work profile and Private Space apps launch
 - [ ] TalkBack labels, large font, RTL (Arabic system language)
 - [ ] Compare cold start with KISS: `adb shell am start -W -n app.tacit/.ui.SearchActivity` against `fr.neamar.kiss/.MainActivity`, 10 runs each after `adb shell am force-stop`
+
+## Later (owner notes)
+- Files: make the scan as fast as possible, and show a clear scanning state while the index is being built, so a search in the first minutes is not read as "not found" (2026-10-16). A files tab in the drawer waits for this (decision 58).

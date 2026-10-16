@@ -1,5 +1,19 @@
 package app.tacit.core
 
+enum class DrawerTab {
+    APPS,
+    SETTINGS;
+
+    fun accepts(item: SearchItem): Boolean = when (this) {
+        APPS -> item.kind == ItemKind.APP
+        SETTINGS -> item.kind == ItemKind.SETTING && APP_SETTING_PREFIXES.none { item.key.startsWith(it) }
+    }
+
+    private companion object {
+        val APP_SETTING_PREFIXES = listOf("appinfo:", "appnotif:", "appprefs:")
+    }
+}
+
 class DrawerList(val items: List<SearchItem>, val letters: CharArray, val starts: IntArray) {
 
     val size: Int get() = items.size
@@ -35,9 +49,9 @@ class DrawerList(val items: List<SearchItem>, val letters: CharArray, val starts
             return normalized.substring(start)
         }
 
-        fun build(all: Array<SearchItem>): DrawerList {
+        fun build(all: Array<SearchItem>, tab: DrawerTab = DrawerTab.APPS): DrawerList {
             val entries = ArrayList<Entry>(all.size)
-            for (item in all) if (item.kind == ItemKind.APP) entries.add(Entry(item, sortKey(item)))
+            for (item in all) if (tab.accepts(item)) entries.add(Entry(item, sortKey(item)))
             entries.sortWith { a, b ->
                 val byName = a.key.compareTo(b.key)
                 if (byName != 0) byName
