@@ -109,7 +109,8 @@ jobs:
           notes="$(ls docs/release-notes/*.md | sort -V | tail -1)"
           tag="$(basename "$notes" .md)"
           if gh release view "$tag" > /dev/null 2>&1; then
-            echo "release $tag exists"
+            echo "release $tag exists, refreshing its notes"
+            gh release edit "$tag" --notes-file "$notes"
             exit 0
           fi
           apk="tacit-${tag}-debug.apk"
