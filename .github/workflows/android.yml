@@ -42,6 +42,28 @@ jobs:
           set -o pipefail
           ./gradlew assembleRelease --stacktrace --continue 2>&1 | tee build-release.log
 
+      - name: Release build is repeatable
+        if: always()
+        run: |
+          apk=app/build/outputs/apk/release/app-release-unsigned.apk
+          if [ ! -f "$apk" ]; then
+            echo "::notice title=Repeatable build::no release APK to compare"
+            exit 0
+          fi
+          cp "$apk" first-release.apk
+          ./gradlew assembleRelease --rerun-tasks --stacktrace > build-release-again.log 2>&1 || true
+          if cmp -s first-release.apk "$apk"; then
+            msg="Two release builds on this runner are byte-identical (sha256 $(sha256sum first-release.apk | cut -c1-16))"
+          else
+            unzip -v first-release.apk | awk '{print $7, $8}' | sort > entries-first.txt
+            unzip -v "$apk" | awk '{print $7, $8}' | sort > entries-second.txt
+            msg="Two release builds on this runner DIFFER. Entries that changed:"$'\n'"$(diff entries-first.txt entries-second.txt | head -20)"
+          fi
+          msg="${msg//'%'/'%25'}"
+          msg="${msg//$'\r'/'%0D'}"
+          msg="${msg//$'\n'/'%0A'}"
+          echo "::notice title=Repeatable build::$msg"
+
       - name: Perf and size numbers
         if: always()
         run: |
@@ -101,21 +123,19 @@ jobs:
           name: tacit-release-apk-unsigned
           path: app/build/outputs/apk/release/*.apk
 
-      - name: Publish prerelease
+      - name: Signing script check (throwaway key, output discarded)
+        if: success()
+        run: |
+          tmp="$(mktemp -d)"
+          keytool -genkeypair -keystore "$tmp/throwaway.jks" -storetype PKCS12 -storepass throwaway -alias throwaway -keyalg RSA -keysize 2048 -validity 2 -dname "CN=throwaway"
+          TACIT_KS_PASS=throwaway bash tools/sign-release.sh app/build/outputs/apk/release/app-release-unsigned.apk "$tmp/throwaway.jks" throwaway "$tmp/check.apk"
+          rm -rf "$tmp"
+
+      - name: Publish release
         if: success() && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          notes="$(ls docs/release-notes/*.md | sort -V | tail -1)"
-          tag="$(basename "$notes" .md)"
-          if gh release view "$tag" > /dev/null 2>&1; then
-            echo "release $tag exists, refreshing its notes"
-            gh release edit "$tag" --notes-file "$notes"
-            exit 0
-          fi
-          apk="tacit-${tag}-debug.apk"
-          cp "$(ls app/build/outputs/apk/debug/*.apk | head -1)" "$apk"
-          gh release create "$tag" "$apk" --target "$GITHUB_SHA" --prerelease --title "Tacit ${tag}" --notes-file "$notes"
+        run: bash .github/scripts/publish-release.sh
 
   device-tests:
     runs-on: ubuntu-latest
@@ -147,7 +167,7 @@ jobs:
           arch: x86_64
           target: google_apis
           disable-animations: true
-          script: bash .github/scripts/device-tests.sh app.tacit.SettingsApplyTest,app.tacit.SettingsScreenTest,app.tacit.ClipboardCaptureTest,app.tacit.ClipboardFocusTest,app.tacit.BatteryDisplayTest,app.tacit.QuicklinksTest,app.tacit.QuicklinksV2Test,app.tacit.AliasesTest,app.tacit.SearchScreenTest,app.tacit.ResultAdapterTest,app.tacit.ScreenPaddingTest,app.tacit.ScreenshotTest,app.tacit.ActionsTest,app.tacit.DrawerTest
+          script: bash .github/scripts/device-tests.sh app.tacit.SettingsApplyTest,app.tacit.SettingsScreenTest,app.tacit.ClipboardCaptureTest,app.tacit.ClipboardFocusTest,app.tacit.BatteryDisplayTest,app.tacit.QuicklinksTest,app.tacit.QuicklinksV2Test,app.tacit.AliasesTest,app.tacit.SearchScreenTest,app.tacit.ResultAdapterTest,app.tacit.ScreenPaddingTest,app.tacit.ScreenshotTest,app.tacit.ActionsTest,app.tacit.DrawerTest,app.tacit.FirstRunTest
 
       - name: Publish screenshots
         if: always() && matrix.api == 35 && github.ref == 'refs/heads/beta'

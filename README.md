@@ -2,9 +2,10 @@
 
 A keyboard-first, offline, black-and-white Android launcher. You type, press Enter, and it's done. Inspired by KISS Launcher, built for F-Droid. "Raycast for Android."
 
-> **Status: written blind, never compiled.** The code was written in an environment with no JDK, Android SDK or emulator. Expect compile errors on the first CI run. Start with `docs/HANDOFF.md`.
+> **Status: 1.0.0.** CI builds it, runs the unit tests, and runs the device tests on Android 14, 15 and 16 emulators. Nothing here has been measured on a real phone, and there are no benchmark numbers from real devices. See `docs/HANDOFF.md`.
 
-## Features in the code
+## Features
+- **First run**: a small card over the list says what Tacit does and offers to make it your home app. It shows once per install.
 - **Search screen**: a single search field with the keyboard already up and autocorrect suppressed (`TYPE_TEXT_VARIATION_FILTER`, or the stricter `textVisiblePassword` option). Results sit next to the bar, which is at the bottom by default. Clock and date are optional.
 - **Fuzzy search tiers**: exact alias > alias prefix > exact name > name prefix > word prefix > initials > letters in order > typo on a word prefix.
   - Typo budget: no typos for 1–2 letters, 1 edit for 3–5, 2 edits for 6+. The first letter must match unless two letters are swapped.
@@ -35,6 +36,7 @@ A keyboard-first, offline, black-and-white Android launcher. You type, press Ent
   - Encrypted with AES-256-GCM (key in Android Keystore). Retention in days and/or items, where 0 means forever.
   - FLAG_SECURE while the clipboard is visible (`cb ` prefix).
   - Optional **lock**: fingerprint, face or screen lock (platform `BiometricPrompt`, no library) before the clipboard is shown. It locks again whenever Tacit leaves the screen.
+- **Quicklinks**: your own rows (Settings → Quicklinks, or Create quicklink in any row's long-press menu). A quicklink opens a web address, an app deep link, a file, a folder, a setting, an app, or a contact action (call, SMS, WhatsApp). Web templates take `{query}`, `{clipboard}` and `{date}`. A link whose target is gone opens its editor instead of failing. It can be pinned to the home screen.
 - **Aliases**:
   - Several per item, comma-separated (Arabic comma works too). One table per category: Apps, Contacts, Settings, Snippets, Shortcuts.
   - One alias can sit on several items; all of them rank at the top, and shared aliases are listed above the table.
@@ -100,24 +102,25 @@ All versions come from the verified data sheet.
 | Suite | Where | Command |
 |---|---|---|
 | JVM unit tests: scorer, calculator, parsing, detectors, CSV, files, folder-grant names, keystroke budget on 1,000 apps + 3,000 contacts | CI | `./gradlew testDebugUnitTest` |
-| Device tests: search screen (Espresso), intent contracts (dial, SMS, WhatsApp, Business, Settings, URL, mail), platform contracts (no INTERNET, HOME, ASSIST, tile, widget, voice service, no init providers, backup off, Settings discovery, encrypted clipboard), entry points and keyboard (UI Automator) | CI emulator (API 35) or phone | `./gradlew connectedDebugAndroidTest` |
+| Device tests: search screen (Espresso), settings, aliases, quicklinks, actions, drawer and first-run card (UI Automator), screenshots; also written but not in the CI list: intent contracts, platform contracts, entry points and keyboard | CI emulators (API 34, 35, 36) or phone | `./gradlew connectedDebugAndroidTest` |
 | Speed: cold, warm and hot startup; frames for a 30-keystroke script; `tacit.query` trace time; KISS comparison | **your phones** | `./gradlew :benchmark:connectedBenchmarkAndroidTest` |
 | Speed profile: baseline profile generator | your phone | `./gradlew :benchmark:connectedBenchmarkAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=app.tacit.benchmark.BaselineProfileGenerator`, then copy the generated `*-baseline-prof.txt` over `app/src/main/baseline-prof.txt` |
 
 The fixtures (`app/src/sharedTest/.../Fixtures.kt`) are generated from a fixed seed, so benchmark numbers are comparable between devices and runs.
 
 ## Not done yet
-- **Real numbers.** Benchmarks are written but need your phones (one flagship, one budget, plus KISS installed).
+- **Phone testing and real numbers.** Everything was checked on emulators. Benchmarks are written but need your phones (one flagship, one budget, plus KISS installed).
 - **Applying the speed profile on F-Droid installs.** `app/src/main/baseline-prof.txt` is a hand-written starter. Play installs pick it up automatically; F-Droid installs need `androidx.profileinstaller`, which isn't in the verified version sheet. Add it once you confirm the version.
+- **F-Droid submission.** The listing text is in `fastlane/` and a draft recipe is in `docs/fdroid/`; the recipe has not been run through F-Droid's tools, and reproducibility on F-Droid's builder is unproven (see `docs/SIGNING.md`).
+- File scan speed and a visible "still scanning" state for the first minutes (see `docs/HANDOFF.md`)
 - detekt and ktlint (versions not in the sheet; `RepoRulesTest` covers the no-comment rule meanwhile)
 - MediaStore seeding, FileObserver and scheduled rescans for files
 - Signal and Telegram buttons (the code paths exist, but the buttons aren't shown)
-- F-Droid fastlane metadata, reproducible-build check, LICENSE file
 - Third-party widget hosting (deliberately skipped, see `docs/decisions.md`)
 
 ## Build
-`./gradlew assembleDebug testDebugUnitTest lintDebug` (JDK 17). CI: `.github/workflows/android.yml` uploads the debug APK.
+`./gradlew assembleDebug testDebugUnitTest lintDebug` (JDK 17). CI: `.github/workflows/android.yml` uploads the debug APK and the unsigned release APK. CI never signs: stable releases are signed by the owner on their own computer, see `docs/SIGNING.md`.
 
 Toolchain (from `docs/kotlin-android-verified-data-2026-10-07.json`): AGP 9.4.0, Kotlin 2.4.20, Gradle 9.7.1, compileSdk 37, targetSdk 36, minSdk 29.
 
-Licence: GPL-3.0 (proposed, not yet added).
+Licence: GPL-3.0, see `LICENSE`. Icon licences are in `NOTICE`.

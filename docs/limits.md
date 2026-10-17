@@ -9,3 +9,4 @@ These come from Android itself. Tacit doesn't work around them with root, hacks 
 - **App shortcuts**: only available while Tacit is the default home app.
 - **No internet**: no currency rates, no search suggestions, no update checks.
 - **WhatsApp**: going straight to a chat needs WhatsApp's contact entry or a number with a country code (set a default country code in Settings).
+- **First install over a beta**: the stable release is signed with the owner's key, so a phone with a beta (debug-signed) build has to uninstall it first. Settings are not carried over; export them from Settings before uninstalling.

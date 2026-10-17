@@ -193,6 +193,11 @@
     <string name="clip_locked_hint">اضغط لفتح القفل</string>
     <string name="clip_unlock_title">فتح قفل الحافظة</string>
 
+    <string name="welcome_title">أهلًا بك في Tacit</string>
+    <string name="welcome_body">اكتب للعثور على التطبيقات والإعدادات والإجراءات السريعة. جهات الاتصال والملفات والحافظة متوقفة حتى تفعّلها من الإعدادات. لا يملك Tacit أي وصول إلى الإنترنت.</string>
+    <string name="welcome_home">اجعله شاشتي الرئيسية</string>
+    <string name="welcome_ok">فهمت</string>
+
     <string name="shortcut_settings">الإعدادات</string>
     <string name="shortcut_aliases">الأسماء المستعارة</string>
 

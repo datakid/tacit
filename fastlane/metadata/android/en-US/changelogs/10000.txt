@@ -1,0 +1,4 @@
+First stable release.
+• First-run card with a shortcut to choose Tacit as your home app
+• GPL-3.0 licence and F-Droid listing
+• Everything from the beta builds: quicklinks, aliases, quick actions, comfortable or compact rows, optional app drawer with a System settings tab

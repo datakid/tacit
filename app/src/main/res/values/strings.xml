@@ -196,6 +196,11 @@
     <string name="clip_locked_hint">Tap to unlock</string>
     <string name="clip_unlock_title">Unlock clipboard</string>
 
+    <string name="welcome_title">Welcome to Tacit</string>
+    <string name="welcome_body">Type to find apps, settings and quick actions. Contacts, files and clipboard stay off until you turn them on in Settings. Tacit has no internet access.</string>
+    <string name="welcome_home">Make it my home</string>
+    <string name="welcome_ok">Got it</string>
+
     <string name="shortcut_settings">Settings</string>
     <string name="shortcut_aliases">Aliases</string>
 

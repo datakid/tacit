@@ -35,6 +35,7 @@ import android.window.OnBackInvokedDispatcher
 import app.tacit.Graph
 import app.tacit.R
 import app.tacit.TacitApp
+import app.tacit.Welcome
 import app.tacit.system.BatteryStatus
 import app.tacit.actions.ActionRows
 import app.tacit.actions.Actions
@@ -84,6 +85,7 @@ class SearchActivity : Activity(), RowCallbacks {
     private var tabMuted = 0
     private var strip: LetterStrip? = null
     private var bubble: TextView? = null
+    private var welcomeCard: View? = null
     private val refreshListener: () -> Unit = { if (::input.isInitialized) refreshRows() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -150,6 +152,7 @@ class SearchActivity : Activity(), RowCallbacks {
         strip = null
         bubble = null
         tabs = null
+        welcomeCard = null
         val palette = Ui.palette(this)
         if (current.wallpaper) {
             window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
@@ -273,6 +276,24 @@ class SearchActivity : Activity(), RowCallbacks {
             }
         }
 
+        if (Welcome.pending(this)) {
+            val card = makeWelcome(palette)
+            welcomeCard = card
+            val cardParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                if (current.barBottom) Gravity.BOTTOM else Gravity.TOP
+            ).apply {
+                val side = Ui.dp(this@SearchActivity, 12)
+                val edge = Ui.dp(this@SearchActivity, 8)
+                setMargins(side, edge, side, edge)
+            }
+            listView = FrameLayout(this).apply {
+                addView(listView, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+                addView(card, cardParams)
+            }
+        }
+
         emptyHint = Ui.text(this, "", 13f, palette.muted).apply {
             gravity = Gravity.CENTER
             setPadding(0, Ui.dp(context, 8), 0, Ui.dp(context, 8))
@@ -325,6 +346,7 @@ class SearchActivity : Activity(), RowCallbacks {
                 override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
                 override fun afterTextChanged(s: Editable?) {
                     Ui.gone(clearButton, s.isNullOrEmpty())
+                    if (!s.isNullOrEmpty()) endWelcome()
                     if (drawerOpen && !s.isNullOrEmpty()) closeDrawer(false)
                     runQuery(s?.toString().orEmpty())
                 }
@@ -378,6 +400,47 @@ class SearchActivity : Activity(), RowCallbacks {
         setContentView(FrameLayout(this).apply { addView(root) })
         Ui.applyBars(window, current.dark)
         refreshMessengers()
+    }
+
+    private fun makeWelcome(palette: Palette): View {
+        val card = Ui.column(this).apply {
+            id = R.id.welcome_card
+            background = Ui.outline(context, palette, 14)
+            val pad = Ui.dp(context, 16)
+            setPadding(pad, pad, pad, pad)
+            isClickable = true
+        }
+        card.addView(Ui.text(this, getString(R.string.welcome_title), 18f, palette.foreground, bold = true))
+        card.addView(Ui.text(this, getString(R.string.welcome_body), 14f, palette.muted).apply {
+            maxLines = Int.MAX_VALUE
+            ellipsize = null
+            setPadding(0, Ui.dp(context, 6), 0, Ui.dp(context, 12))
+        })
+        val buttons = Ui.row(this)
+        val gap = Ui.dp(this, 8)
+        if (!isDefaultHome()) {
+            buttons.addView(welcomeButton(palette, R.string.welcome_home) {
+                endWelcome()
+                runCatching { startActivity(Intent(android.provider.Settings.ACTION_HOME_SETTINGS)) }
+            }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginEnd = gap })
+        }
+        buttons.addView(welcomeButton(palette, R.string.welcome_ok) { endWelcome() })
+        card.addView(buttons)
+        return card
+    }
+
+    private fun welcomeButton(palette: Palette, label: Int, onClick: () -> Unit): TextView =
+        Ui.chip(this, palette, getString(label), onClick).apply {
+            id = if (label == R.string.welcome_ok) R.id.welcome_ok else R.id.welcome_home
+            minHeight = Ui.dp(context, 48)
+            minWidth = Ui.dp(context, 96)
+        }
+
+    private fun endWelcome() {
+        val card = welcomeCard ?: return
+        welcomeCard = null
+        Ui.gone(card, true)
+        Welcome.finish(this)
     }
 
     private fun refreshMessengers() {
@@ -470,6 +533,7 @@ class SearchActivity : Activity(), RowCallbacks {
 
     override fun onStop() {
         super.onStop()
+        endWelcome()
         Graph.files.cancel()
         clipLock.lock()
         if (Graph.prefs.closeAfterAction) {
@@ -547,6 +611,7 @@ class SearchActivity : Activity(), RowCallbacks {
 
     private fun openDrawer() {
         if (drawerOpen || strip == null) return
+        endWelcome()
         if (input.text.isNotEmpty()) input.setText("")
         drawerOpen = true
         list.isStackFromBottom = false

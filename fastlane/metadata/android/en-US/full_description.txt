@@ -1,0 +1,24 @@
+Tacit is a launcher you drive with the keyboard. Open it, type a few letters, press Enter. The keyboard is already up, results sit next to the search bar, and everything runs on your phone.
+
+<b>What you can type</b>
+• Apps, with typo-tolerant matching, initials and your own aliases. Work profile and Private Space apps included.
+• Settings, including per-app info and notification pages, and a flashlight toggle.
+• Calculator and converter: 15% of 340, 5pm dubai in tokyo, 255 in hex, next friday + 3 weeks.
+• Quick actions: timer 10 tea, alarm 7:30, event dentist tomorrow 3pm, uuid, pass 20, roll 2d6.
+• Quicklinks and snippets you define yourself, with dates and clipboard placeholders.
+• Contacts, files and clipboard history, each off until you turn it on.
+
+<b>Look and feel</b>
+• Black and white, light or dark, with comfortable or compact rows.
+• Optional A–Z app drawer with a letter strip, off by default.
+• Arabic translation of every screen and full right-to-left layout.
+
+<b>Private by design</b>
+• No internet permission. Nothing leaves your phone.
+• No tracking, no ads, no accounts, no runtime libraries.
+• Clipboard history is encrypted on the device, can hide sensitive clips, and can be locked with your fingerprint or screen lock.
+• Export or import everything as one file. Backup is off.
+
+Tacit can be your home app, your assistant, a Quick Settings tile, or a search-bar widget in another launcher.
+
+Free software, GPL-3.0.

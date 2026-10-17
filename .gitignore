@@ -1,0 +1,17 @@
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+signing.properties
+keystore.properties
+local.properties
+.gradle/
+build/
+.idea/
+*.iml
+.DS_Store
+*-signed.apk
+*-aligned.apk
+*.apk
+*.sha256
