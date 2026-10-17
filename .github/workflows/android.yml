@@ -59,6 +59,7 @@ jobs:
             unzip -v "$apk" | awk '{print $7, $8}' | sort > entries-second.txt
             msg="Two release builds on this runner DIFFER. Entries that changed:"$'\n'"$(diff entries-first.txt entries-second.txt | head -20)"
           fi
+          msg="$msg"$'\n'"$(python3 .github/scripts/apk-fingerprint.py "$apk")"
           msg="${msg//'%'/'%25'}"
           msg="${msg//$'\r'/'%0D'}"
           msg="${msg//$'\n'/'%0A'}"
