@@ -21,6 +21,9 @@ def main(path):
     for group in sorted(groups):
         digest = hashlib.sha256("\n".join(sorted(groups[group])).encode()).hexdigest()[:10]
         print("%s: %d entries, %s" % (group, len(groups[group]), digest))
+        if len(groups[group]) <= 3:
+            for line in sorted(groups[group]):
+                print("  " + line)
 
 
 main(sys.argv[1])
