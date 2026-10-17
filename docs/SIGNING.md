@@ -36,5 +36,5 @@ Phones running a beta build (debug-signed) must uninstall before installing the 
 1. Put your certificate fingerprint in `AllowedAPKSigningKeys` (lowercase SHA-256, no colons).
 2. Copy the file to `metadata/app.tacit.yml` in a fork of `fdroiddata`, run `fdroid lint app.tacit` and `fdroid build -l app.tacit`, then open a merge request.
 3. The `Binaries` line lets F-Droid compare its own build with your signed APK and publish yours when they match byte for byte. If they differ, F-Droid signs its own build instead and users can't switch between the two without reinstalling.
-4. The `Repeatable build` annotation in CI says whether two builds on the same runner match. That is a first check only; F-Droid builds on a different machine.
+4. The `Repeatable build` annotation in CI says whether two builds on the same runner match, with a fingerprint per APK part. Between two runners the only difference seen was the commit hash AGP writes to `META-INF/version-control-info.textproto`, so build from the same commit as the tag. That is a first check only; F-Droid builds on a different machine and this has not been tried there.
 5. The store text lives in `fastlane/metadata/android/` (English and Arabic). Each release needs a `changelogs/<versionCode>.txt` in both folders. `RepoRulesTest` checks this.
