@@ -51,15 +51,14 @@ jobs:
             sha="$(sha256sum "$f" | cut -c1-64)"
             rm -rf golden-parts
             mkdir golden-parts
-            split -C 28000 -d -a 2 "$f" golden-parts/part.
+            gzip -9 -n -c "$f" | base64 -w0 | fold -w 3500 > golden-parts/all
+            total="$(wc -l < golden-parts/all)"
+            total=$((total + 1))
+            split -l 1 -d -a 2 golden-parts/all golden-parts/part.
             n=0
             for p in golden-parts/part.*; do
               n=$((n + 1))
-              msg="$(cat "$p")"
-              msg="${msg//'%'/'%25'}"
-              msg="${msg//$'\r'/'%0D'}"
-              msg="${msg//$'\n'/'%0A'}"
-              echo "::notice title=Golden actual ${name} part ${n} sha256=${sha}::${msg}"
+              echo "::notice title=Golden actual ${name} part ${n}/${total} sha256=${sha} gzip+base64::$(cat "$p")"
             done
           done
 
