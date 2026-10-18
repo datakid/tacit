@@ -42,6 +42,27 @@ jobs:
           set -o pipefail
           ./gradlew assembleDebug testDebugUnitTest lintDebug --stacktrace --continue 2>&1 | tee build.log
 
+      - name: Golden actual output
+        if: always()
+        run: |
+          for f in app/build/golden-actual/*; do
+            [ -f "$f" ] || continue
+            name="$(basename "$f")"
+            sha="$(sha256sum "$f" | cut -c1-64)"
+            rm -rf golden-parts
+            mkdir golden-parts
+            split -C 28000 -d -a 2 "$f" golden-parts/part.
+            n=0
+            for p in golden-parts/part.*; do
+              n=$((n + 1))
+              msg="$(cat "$p")"
+              msg="${msg//'%'/'%25'}"
+              msg="${msg//$'\r'/'%0D'}"
+              msg="${msg//$'\n'/'%0A'}"
+              echo "::notice title=Golden actual ${name} part ${n} sha256=${sha}::${msg}"
+            done
+          done
+
       - name: Device tests compile
         if: always()
         run: |
@@ -81,7 +102,7 @@ jobs:
         if: always()
         run: |
           {
-            grep -h -o 'TACIT_KEYSTROKE_JVM[^<]*' app/build/test-results/testDebugUnitTest/*.xml | head -2
+            grep -h -o -E 'TACIT_(KEYSTROKE|FILESEARCH)[A-Z_]* [^<]*' app/build/test-results/testDebugUnitTest/*.xml | head -4
             for f in app/build/outputs/apk/debug/*.apk app/build/outputs/apk/release/*.apk; do
               [ -f "$f" ] && echo "$(stat -c %s "$f") bytes $(basename "$f")"
             done
@@ -182,7 +203,7 @@ jobs:
           arch: x86_64
           target: google_apis
           disable-animations: true
-          script: bash .github/scripts/device-tests.sh app.tacit.SettingsApplyTest,app.tacit.SettingsScreenTest,app.tacit.ClipboardCaptureTest,app.tacit.ClipboardFocusTest,app.tacit.BatteryDisplayTest,app.tacit.QuicklinksTest,app.tacit.QuicklinksV2Test,app.tacit.AliasesTest,app.tacit.SearchScreenTest,app.tacit.ResultAdapterTest,app.tacit.ScreenPaddingTest,app.tacit.ScreenshotTest,app.tacit.ActionsTest,app.tacit.DrawerTest,app.tacit.FirstRunTest
+          script: bash .github/scripts/device-tests.sh app.tacit.SettingsApplyTest,app.tacit.SettingsScreenTest,app.tacit.ClipboardCaptureTest,app.tacit.ClipboardFocusTest,app.tacit.BatteryDisplayTest,app.tacit.QuicklinksTest,app.tacit.QuicklinksV2Test,app.tacit.AliasesTest,app.tacit.SearchScreenTest,app.tacit.ResultAdapterTest,app.tacit.ScreenPaddingTest,app.tacit.ScreenshotTest,app.tacit.ActionsTest,app.tacit.DrawerTest,app.tacit.FirstRunTest,app.tacit.IntentContractTest,app.tacit.PlatformContractTest,app.tacit.EntryPointsUiTest
 
       - name: Publish screenshots
         if: always() && matrix.api == 35 && github.ref == 'refs/heads/beta'

@@ -1,5 +1,6 @@
 package app.tacit.core
 
+import app.tacit.fixtures.Budgets
 import app.tacit.fixtures.Fixtures
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -51,6 +52,6 @@ class KeystrokeBudgetTest {
         val p50 = percentile(timings, 0.50)
         val p95 = percentile(timings, 0.95)
         println("TACIT_KEYSTROKE_JVM p50=${"%.2f".format(p50)}ms p95=${"%.2f".format(p95)}ms items=4000")
-        assertTrue("p95 $p95 ms over JVM budget 25 ms (device budget is 8 ms, measured by TypingBenchmark)", p95 < 25.0)
+        assertTrue("p95 $p95 ms over JVM budget ${Budgets.KEYSTROKE_JVM_P95_MS} ms (device budget is 8 ms, measured by TypingBenchmark)", p95 < Budgets.KEYSTROKE_JVM_P95_MS)
     }
 }
