@@ -1,0 +1,4 @@
+Safety-net build for 1.1.
+• No visible changes
+• New automatic checks for search ranking, file search, backups and code quality
+• Known: Home can crash Tacit when the result list is empty; fixed next

@@ -1,6 +1,6 @@
 # Handoff
 
-Tacit is at 1.0.0. CI builds it, runs the unit tests, runs lint and the R8 release build, and runs the device tests on Android 14, 15 and 16 emulators. Nothing has been measured on a real phone. This file says what is left and what to check there.
+Tacit is at 1.0.1-beta (1.0.0 plus the safety net for 1.1). CI builds it, runs the unit tests, runs lint and the R8 release build, and runs the device tests on Android 14, 15 and 16 emulators. Nothing has been measured on a real phone. This file says what is left and what to check there.
 
 ## Owner's rules
 - No comments in Kotlin (strict reading). Explanations go in `docs/decisions.md`; `RepoRulesTest` enforces it.
@@ -21,9 +21,10 @@ Tacit is at 1.0.0. CI builds it, runs the unit tests, runs lint and the R8 relea
 ## Versions and CI
 - Versions: one minor per milestone with `-beta` until 1.0.0 (decision 31). `versionCode = major * 10000 + minor * 100 + patch`. The release tag is the newest file name in `docs/release-notes`; a name without a suffix is a stable release.
 - `build` job: debug build, unit tests (including `KeystrokeBudgetTest` and `RepoRulesTest`), lint, device-test compile, release build, a repeat release build with a byte comparison, benchmark module compile, signing-script check with a throwaway key, then publishing on `main`. The "Perf and size" and "Repeatable build" annotations hold the numbers.
-- `device-tests` job: API 34, 35 and 36 emulators, one Gradle run per test class (`.github/scripts/device-tests.sh`). `IntentContractTest`, `PlatformContractTest` and `EntryPointsUiTest` are compiled but not in the CI list; run them on a phone with `./gradlew connectedDebugAndroidTest`.
+- `device-tests` job: API 34, 35 and 36 emulators, one Gradle run per test class (`.github/scripts/device-tests.sh`). `BackupCompatTest`, `IntentContractTest` and `PlatformContractTest` are in the list. `EntryPointsUiTest` is compiled but left out: `typingThenHomeClearsQuery` crashes the app on API 34, 35 and 36 (`SearchActivity.onNewIntent` calls `list.setSelection(0)` and `ResultAdapter.getItemId` reads `items[0]` of an empty list, `IndexOutOfBoundsException` at `ResultAdapter.kt:77`; bug B18 in the 1.1 plan). Put the class back in the list when that is fixed.
 - Device tests run with `TacitTestRunner`, which creates the first-run marker so only `FirstRunTest` sees the welcome card.
-- `SettingsApplyTest` has failed once on a different test in each of three milestones and passed on re-run. The cause is not found; it looks like emulator timing.
+- `SettingsApplyTest` has failed once on a different test in each of three milestones and passed on re-run. Ten isolated runs on API 35 all passed, so the cause is still not found; `Idle.await()` now waits for the worker and the main thread after each preference change (decision 69).
+- `guard-check.sh` runs first in the `build` job and fails on a lower `@Test` count or an added `Ignore`/`Assume` (decision 66). `RankingGoldenTest` and `FileGoldenTest` compare against `app/src/test/resources/golden/*.tsv`; change those files only with the owner's approval (decision 67). Lint fails on new errors (decision 68). The device-test notice starts with StrictMode counts, compared with `docs/strictmode-baseline.txt` (decision 69).
 
 ## Architecture
 - `core/`: pure Kotlin, no Android (normalizer, transliteration, scorer, search engine, query grammar, result composer, quick actions, quicklink rules, alias rules, contact file formats, drawer list, row densities). Unit-tested.
@@ -59,7 +60,7 @@ Tacit is at 1.0.0. CI builds it, runs the unit tests, runs lint and the R8 relea
 
 ## Later (owner notes)
 - Files: make the scan as fast as possible, and show a clear scanning state while the index is being built, so a search in the first minutes is not read as "not found" (2026-10-16). A files tab in the drawer waits for this (decision 58).
-- Find the cause of the `SettingsApplyTest` flake.
+- Find the cause of the `SettingsApplyTest` flake (1.0.1-beta: not reproduced in ten isolated runs, idle waits added, decision 69).
 - Narrow phones: the four contact buttons can truncate the name.
-- GitHub Actions: `ubuntu-latest` moves to Ubuntu 26 on 2026-10-19; the Node 20 action deprecation also needs a look.
+- GitHub Actions: `ubuntu-latest` moves to Ubuntu 26 on 2026-10-19; the Node 20 action deprecation also needs a look (1.0.1-beta: runners pinned to `ubuntu-24.04`, actions on node24 majors, `setup-gradle` with `cache-provider: basic`).
 - Add real phone screenshots to `fastlane/metadata/android/*/images/phoneScreenshots/`.

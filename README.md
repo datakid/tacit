@@ -2,7 +2,7 @@
 
 A keyboard-first, offline, black-and-white Android launcher. You type, press Enter, and it's done. Inspired by KISS Launcher, built for F-Droid. "Raycast for Android."
 
-> **Status: 1.0.0.** CI builds it, runs the unit tests, and runs the device tests on Android 14, 15 and 16 emulators. Nothing here has been measured on a real phone, and there are no benchmark numbers from real devices. See `docs/HANDOFF.md`.
+> **Status: 1.0.1-beta** (1.0.0 plus the test and CI safety net for 1.1; no behaviour change). CI builds it, runs the unit tests, and runs the device tests on Android 14, 15 and 16 emulators. Nothing here has been measured on a real phone, and there are no benchmark numbers from real devices. See `docs/HANDOFF.md`.
 
 ## Features
 - **First run**: a small card over the list says what Tacit does and offers to make it your home app. It shows once per install.
@@ -101,12 +101,12 @@ All versions come from the verified data sheet.
 ## Tests
 | Suite | Where | Command |
 |---|---|---|
-| JVM unit tests: scorer, calculator, parsing, detectors, CSV, files, folder-grant names, keystroke budget on 1,000 apps + 3,000 contacts | CI | `./gradlew testDebugUnitTest` |
-| Device tests: search screen (Espresso), settings, aliases, quicklinks, actions, drawer and first-run card (UI Automator), screenshots; also written but not in the CI list: intent contracts, platform contracts, entry points and keyboard | CI emulators (API 34, 35, 36) or phone | `./gradlew connectedDebugAndroidTest` |
+| JVM unit tests: scorer, calculator, parsing, detectors, CSV, files, folder-grant names, keystroke budget on 1,000 apps + 3,000 contacts, golden ranking (`golden/ranking.tsv`) and golden file search (`golden/files.tsv`, 50,000 entries) | CI | `./gradlew testDebugUnitTest` |
+| Device tests: search screen (Espresso), settings, aliases, quicklinks, actions, drawer and first-run card (UI Automator), screenshots, 1.0.0 backup compatibility, intent and platform contracts; written but not in the CI list: entry points (one test crashes, see `docs/HANDOFF.md`) and keyboard | CI emulators (API 34, 35, 36) or phone | `./gradlew connectedDebugAndroidTest` |
 | Speed: cold, warm and hot startup; frames for a 30-keystroke script; `tacit.query` trace time; KISS comparison | **your phones** | `./gradlew :benchmark:connectedBenchmarkAndroidTest` |
 | Speed profile: baseline profile generator | your phone | `./gradlew :benchmark:connectedBenchmarkAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=app.tacit.benchmark.BaselineProfileGenerator`, then copy the generated `*-baseline-prof.txt` over `app/src/main/baseline-prof.txt` |
 
-The fixtures (`app/src/sharedTest/.../Fixtures.kt`) are generated from a fixed seed, so benchmark numbers are comparable between devices and runs.
+The fixtures (`app/src/sharedTest/.../Fixtures.kt`, `FileFixtures.kt`) are generated from a fixed seed, so benchmark numbers are comparable between devices and runs. Performance limits live in `Budgets.kt`; golden files, `Budgets.kt`, the workflow and its scripts, `lint-baseline.xml`, `app/build.gradle.kts` and the manifest are protected files that a pull request must list (decisions 66 to 68).
 
 ## Not done yet
 - **Phone testing and real numbers.** Everything was checked on emulators. Benchmarks are written but need your phones (one flagship, one budget, plus KISS installed).
@@ -119,7 +119,7 @@ The fixtures (`app/src/sharedTest/.../Fixtures.kt`) are generated from a fixed s
 - Third-party widget hosting (deliberately skipped, see `docs/decisions.md`)
 
 ## Build
-`./gradlew assembleDebug testDebugUnitTest lintDebug` (JDK 17). CI: `.github/workflows/android.yml` uploads the debug APK and the unsigned release APK. CI never signs: stable releases are signed by the owner on their own computer, see `docs/SIGNING.md`.
+`./gradlew assembleDebug testDebugUnitTest lintDebug` (JDK 17); a new lint error fails the build, existing findings are in `app/lint-baseline.xml`. CI: `.github/workflows/android.yml` uploads the debug APK and the unsigned release APK. CI never signs: stable releases are signed by the owner on their own computer, see `docs/SIGNING.md`.
 
 Toolchain (from `docs/kotlin-android-verified-data-2026-10-07.json`): AGP 9.4.0, Kotlin 2.4.20, Gradle 9.7.1, compileSdk 37, targetSdk 36, minSdk 29.
 
