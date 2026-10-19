@@ -3,6 +3,7 @@ adb logcat -c
 status=0
 : > device-tests.log
 : > tests-ran.txt
+: > logcat.txt
 rm -f timeout-diagnostics.txt
 for cls in ${1//,/ }; do
   ./gradlew connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class="$cls" --stacktrace >> device-tests.log 2>&1 &
@@ -40,12 +41,40 @@ for cls in ${1//,/ }; do
     grep -oE '<testcase [^>]*>' "$f" | sed -E 's/<testcase name="([^"]*)".*time="([0-9.]+)".*/\1 \2/' | awk '$2 >= 5 {print "  slow: " $0}'
     awk '/<testcase /{match($0,/name="[^"]*"/); name=substr($0,RSTART,RLENGTH)} /<failure/{print "FAILED " name; n=5} n>0{print; n--}' "$f" | cut -c1-260
   done >> tests-ran.txt
+  adb logcat -d -v threadtime >> logcat.txt
+  adb logcat -c
 done
-adb logcat -d -v threadtime > logcat.txt
 rm -rf tacit-shots
 adb pull /sdcard/tacit-shots tacit-shots >/dev/null 2>&1 || true
+strictmode_report() {
+  awk '
+    function close_block() { if (inside && has_app) in_app++; has_app = 0 }
+    /StrictMode policy violation/ { close_block(); total++; inside = 1; next }
+    inside && /StrictMode:/ {
+      if (/at app\.tacit\./) {
+        match($0, /at app\.tacit\.[^ (]+/)
+        frames[substr($0, RSTART + 3, RLENGTH - 3)]++
+        has_app = 1
+      }
+      next
+    }
+    { close_block(); inside = 0 }
+    END {
+      close_block()
+      print "StrictMode policy violations: total=" total + 0 " in_app=" in_app + 0
+      for (f in frames) print frames[f] " " f
+    }
+  ' logcat.txt
+}
+strictmode_report > strictmode-raw.txt
+{
+  head -1 strictmode-raw.txt
+  tail -n +2 strictmode-raw.txt | sort -rn | head -10
+} > strictmode.txt
 {
   echo "exit status: $status"
+  echo "--- strictmode"
+  head -c 1000 strictmode.txt
   echo "--- timeout diagnostics"
   head -c 1200 timeout-diagnostics.txt 2>/dev/null
   echo "--- tests that ran"
