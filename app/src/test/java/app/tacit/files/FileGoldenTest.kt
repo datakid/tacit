@@ -33,9 +33,9 @@ class FileGoldenTest {
 
     @Test
     fun fileSearchMatchesTheGoldenFile() {
-        val table = FileFixtures.table(System.currentTimeMillis())
+        val table = FileFixtures.table(FileFixtures.NOW)
         val lines = queries.map { query ->
-            val hits = FileMatcher.search(table, query, 10) { false }
+            val hits = FileMatcher.search(table, query, 10, now = FileFixtures.NOW) { false }
             GoldenFile.label(query) + "\t" + hits.joinToString("|") { it.path + "@" + it.score }
         }
         GoldenFile.check("files.tsv", lines.joinToString("\n") + "\n")
