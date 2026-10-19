@@ -51,6 +51,7 @@ class AliasesTest {
         Graph.applyPrefs()
         sample = File(InstrumentationRegistry.getInstrumentation().targetContext.getExternalFilesDir(null)!!, "qlm3-sample.pdf")
             .apply { writeText("sample") }
+        Idle.await()
         Graph.useItemsForTesting(Fixtures.apps())
         Intents.init()
         intending(ExternalIntents.matcher()).respondWith(Instrumentation.ActivityResult(Activity.RESULT_OK, null))
@@ -62,6 +63,7 @@ class AliasesTest {
         touched.forEach { Graph.aliases.set(it, emptyList()) }
         Graph.aliases.set(fileKey(), emptyList())
         Graph.useItemsForTesting(null)
+        Idle.await()
         sample.delete()
     }
 

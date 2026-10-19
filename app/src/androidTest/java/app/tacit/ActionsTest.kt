@@ -71,6 +71,7 @@ class ActionsTest {
         prefs.resultCount = 8
         Graph.applyPrefs()
         target = File(context.getExternalFilesDir(null)!!, "m4-export.out").apply { delete() }
+        Idle.await()
         Graph.useItemsForTesting(listOf(SearchItem("app:m4/photos", ItemKind.APP, "Photos"), SearchItem("app:m4/flipkart", ItemKind.APP, "Flipkart")))
         Intents.init()
         intending(ExternalIntents.matcher()).respondWith(Instrumentation.ActivityResult(Activity.RESULT_OK, null))
@@ -81,6 +82,7 @@ class ActionsTest {
         Intents.release()
         ContactExport.reader = { ContactExport.readContacts(it) }
         Graph.useItemsForTesting(null)
+        Idle.await()
         target.delete()
     }
 
