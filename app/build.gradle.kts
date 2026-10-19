@@ -38,6 +38,7 @@ android {
         warningsAsErrors = false
         abortOnError = false
         checkReleaseBuilds = false
+        baseline = file("lint-baseline.xml")
     }
 
     testOptions {
