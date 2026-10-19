@@ -226,53 +226,6 @@ jobs:
           git commit -q -m "Screenshots from ${GITHUB_SHA}"
           git push -q --force "https://x-access-token:${TOKEN}@github.com/${REPO}.git" ci-screenshots
 
-  lint-baseline:
-    if: ${{ inputs.m8_temp }}
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: 17
-
-      - uses: gradle/actions/setup-gradle@v6
-        with:
-          cache-provider: basic
-
-      - name: Accept SDK licenses
-        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
-
-      - name: Update lint baseline
-        run: |
-          chmod +x gradlew
-          ./gradlew updateLintBaseline --stacktrace
-
-      - name: Baseline through annotations
-        if: always()
-        run: |
-          f=app/lint-baseline.xml
-          [ -f "$f" ] || { echo "::error title=No baseline::app/lint-baseline.xml was not written"; exit 1; }
-          sha="$(sha256sum "$f" | cut -c1-64)"
-          rm -rf baseline-parts
-          mkdir baseline-parts
-          xz -9e -c "$f" | base64 -w0 | fold -w 3500 > baseline-parts/all
-          total=$(( $(wc -l < baseline-parts/all) + 1 ))
-          split -l 1 -d -a 2 baseline-parts/all baseline-parts/part.
-          n=0
-          for p in baseline-parts/part.*; do
-            n=$((n + 1))
-            echo "::notice title=Lint baseline part ${n}/${total} sha256=${sha} xz+base64::$(cat "$p")"
-          done
-
-      - uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: lint-baseline
-          path: app/lint-baseline.xml
-          if-no-files-found: ignore
-
   settings-apply-flake:
     if: ${{ inputs.m8_temp }}
     runs-on: ubuntu-24.04
