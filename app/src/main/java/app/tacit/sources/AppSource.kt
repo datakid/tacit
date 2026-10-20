@@ -9,6 +9,7 @@ import android.os.UserHandle
 import android.os.UserManager
 import app.tacit.Graph
 import app.tacit.core.ItemKind
+import app.tacit.core.RefreshSources
 import app.tacit.core.SearchItem
 
 class AppSource(private val context: Context) {
@@ -25,11 +26,11 @@ class AppSource(private val context: Context) {
     private var registered = false
 
     private val callback = object : LauncherApps.Callback() {
-        override fun onPackageRemoved(packageName: String, user: UserHandle) = Graph.requestRefresh()
-        override fun onPackageAdded(packageName: String, user: UserHandle) = Graph.requestRefresh()
-        override fun onPackageChanged(packageName: String, user: UserHandle) = Graph.requestRefresh()
-        override fun onPackagesAvailable(packageNames: Array<out String>, user: UserHandle, replacing: Boolean) = Graph.requestRefresh()
-        override fun onPackagesUnavailable(packageNames: Array<out String>, user: UserHandle, replacing: Boolean) = Graph.requestRefresh()
+        override fun onPackageRemoved(packageName: String, user: UserHandle) = Graph.requestRefresh(RefreshSources.APPS)
+        override fun onPackageAdded(packageName: String, user: UserHandle) = Graph.requestRefresh(RefreshSources.APPS)
+        override fun onPackageChanged(packageName: String, user: UserHandle) = Graph.requestRefresh(RefreshSources.APPS)
+        override fun onPackagesAvailable(packageNames: Array<out String>, user: UserHandle, replacing: Boolean) = Graph.requestRefresh(RefreshSources.APPS)
+        override fun onPackagesUnavailable(packageNames: Array<out String>, user: UserHandle, replacing: Boolean) = Graph.requestRefresh(RefreshSources.APPS)
     }
 
     fun items(): List<SearchItem> = cached + shortcuts

@@ -9,6 +9,7 @@ import app.tacit.Graph
 import app.tacit.Prefs
 import app.tacit.core.ItemKind
 import app.tacit.core.Normalizer
+import app.tacit.core.RefreshSources
 import app.tacit.core.SearchItem
 
 class ContactInfo(
@@ -34,7 +35,7 @@ class ContactSource(private val context: Context, private val prefs: Prefs) {
 
     private val observer = object : ContentObserver(Graph.worker) {
         override fun onChange(selfChange: Boolean) {
-            Graph.requestRefresh()
+            Graph.requestRefresh(RefreshSources.CONTACTS)
         }
     }
 

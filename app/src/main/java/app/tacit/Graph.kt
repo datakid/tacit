@@ -11,6 +11,8 @@ import app.tacit.core.AliasEntry
 import app.tacit.core.AliasRules
 import app.tacit.core.IndexOptions
 import app.tacit.core.PrefixGrammar
+import app.tacit.core.RefreshCoalescer
+import app.tacit.core.RefreshSources
 import app.tacit.core.SearchEngine
 import app.tacit.core.SearchItem
 import app.tacit.data.AliasStore
@@ -52,6 +54,8 @@ object Graph {
     val settings by lazy { SettingSource(context, prefs) }
     val snippetSource by lazy { SnippetSource(snippets) }
     val quicklinkSource by lazy { QuicklinkSource(quicklinks) }
+
+    private const val REFRESH_DELAY_MS = 400L
 
     private val listeners = ArrayList<() -> Unit>()
     private val rebuildQueued = AtomicBoolean(false)
@@ -96,11 +100,18 @@ object Graph {
     }
 
     fun refreshAll() {
-        apps.reload()
-        if (prefs.contactsEnabled) contacts.reload() else contacts.clear()
-        settings.reload(apps.items())
-        snippetSource.reload()
-        quicklinkSource.reload()
+        refresh(RefreshSources.ALL)
+    }
+
+    private fun refresh(requested: Int) {
+        val sources = RefreshSources.expand(requested)
+        if ((sources and RefreshSources.APPS) != 0) apps.reload()
+        if ((sources and RefreshSources.CONTACTS) != 0) {
+            if (prefs.contactsEnabled) contacts.reload() else contacts.clear()
+        }
+        if ((sources and RefreshSources.SETTINGS) != 0) settings.reload(apps.items())
+        if ((sources and RefreshSources.SNIPPETS) != 0) snippetSource.reload()
+        if ((sources and RefreshSources.QUICKLINKS) != 0) quicklinkSource.reload()
         rebuild()
     }
 
@@ -136,8 +147,16 @@ object Graph {
         }
     }
 
-    fun requestRefresh() {
-        worker.post { refreshAll() }
+    private val refreshCoalescer by lazy {
+        RefreshCoalescer(REFRESH_DELAY_MS, { delay, task -> worker.postDelayed(task, delay) }, { bits -> refresh(bits) })
+    }
+
+    fun requestRefresh(sources: Int = RefreshSources.ALL) {
+        refreshCoalescer.request(sources)
+    }
+
+    fun flushRefresh() {
+        worker.post { refreshCoalescer.flush() }
     }
 
     @Volatile
@@ -149,7 +168,7 @@ object Graph {
             engine.replaceItems(items)
             main.post { listeners.forEach { it() } }
         } else {
-            requestRefresh()
+            worker.post { refreshAll() }
         }
     }
 

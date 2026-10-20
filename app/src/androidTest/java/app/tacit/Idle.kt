@@ -10,6 +10,7 @@ object Idle {
 
     fun await(): Boolean {
         val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(LIMIT_SECONDS)
+        Graph.flushRefresh()
         val worker = CountDownLatch(1)
         Graph.worker.post { worker.countDown() }
         val workerDone = worker.await(LIMIT_SECONDS, TimeUnit.SECONDS)

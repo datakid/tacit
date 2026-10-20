@@ -13,6 +13,7 @@ import app.tacit.actions.Actions
 import app.tacit.actions.PinShortcut
 import app.tacit.core.AliasRules
 import app.tacit.core.ItemKind
+import app.tacit.core.RefreshSources
 import app.tacit.core.SearchItem
 import app.tacit.data.AliasText
 import app.tacit.data.Snippet
@@ -64,7 +65,7 @@ object SecondaryMenu {
                 val id = item.key.removePrefix("clip:").toLongOrNull()
                 add(R.string.menu_save_snippet) {
                     Graph.snippets.upsert(Snippet(Graph.snippets.newId(), "", "", item.payload))
-                    Graph.requestRefresh()
+                    Graph.requestRefresh(RefreshSources.SNIPPETS)
                 }
                 if (id != null) add(R.string.menu_delete) {
                     Graph.clipboard.delete(id)
