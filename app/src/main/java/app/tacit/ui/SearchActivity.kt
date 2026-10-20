@@ -730,16 +730,16 @@ class SearchActivity : Activity(), RowCallbacks {
         rows.addAll(if (web != null) baseRows.dropLast(1) else baseRows)
         rows.addAll(fileRows)
         if (web != null) rows.add(web)
-        val display = if (Graph.prefs.barAtBottom) rows.asReversed() else rows
-        adapter.selected = if (Graph.prefs.barAtBottom) (display.size - 1).coerceAtLeast(0) else 0
-        adapter.submit(display)
+        val barBottom = look?.barBottom ?: Graph.prefs.barAtBottom
+        val display = if (barBottom) rows.asReversed() else rows
+        adapter.submit(display, if (barBottom) (display.size - 1).coerceAtLeast(0) else 0)
         if (currentScope == Scope.CLIPBOARD && rows.isEmpty()) {
             emptyHint.text = getString(if (Graph.prefs.clipboardEnabled) R.string.clip_empty else R.string.clip_off)
             emptyHint.visibility = View.VISIBLE
         } else {
             emptyHint.visibility = View.GONE
         }
-        if (Graph.prefs.barAtBottom) list.setSelection(display.size - 1)
+        if (barBottom) list.setSelection(display.size - 1)
     }
 
     private fun fileItem(hit: FileHit): SearchItem =

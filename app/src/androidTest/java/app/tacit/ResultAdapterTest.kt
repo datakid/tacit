@@ -1,5 +1,6 @@
 package app.tacit
 
+import android.database.DataSetObserver
 import android.graphics.drawable.Drawable
 import android.view.View
 import android.view.ViewGroup
@@ -215,6 +216,26 @@ class ResultAdapterTest {
         for (position in -1..3) adapter.getItemId(position)
         adapter.submit(everything)
         for (position in -1..everything.size + 1) adapter.getItemId(position)
+    }
+
+    @Test
+    fun submitNotifiesTheListOncePerCall() {
+        val adapter = adapter(Recorder(), emptySet())
+        var changes = 0
+        adapter.registerDataSetObserver(object : DataSetObserver() {
+            override fun onChanged() {
+                changes++
+            }
+        })
+        onMain { adapter.submit(everything.take(5), 3) }
+        assertEquals(1, changes)
+        assertEquals(3, adapter.selected)
+        assertEquals(5, adapter.count)
+        onMain { adapter.submit(everything.take(1)) }
+        assertEquals(2, changes)
+        assertEquals(0, adapter.selected)
+        onMain { adapter.selected = 0 }
+        assertEquals(3, changes)
     }
 
     @Test
