@@ -16,6 +16,8 @@ import app.tacit.ui.ResultAdapter
 import app.tacit.ui.RowCallbacks
 import app.tacit.ui.Ui
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
@@ -205,6 +207,26 @@ class ResultAdapterTest {
             val visible = buttons.filter { effectivelyVisible(it) }.map { it.tag }
             assertEquals(listOf(ContactAction.CALL, ContactAction.MESSAGE), visible)
         }
+    }
+
+    @Test
+    fun itemIdsAreSafeForAnyPosition() {
+        val adapter = ResultAdapter(context, Recorder(), Ui.palette(context))
+        for (position in -1..3) adapter.getItemId(position)
+        adapter.submit(everything)
+        for (position in -1..everything.size + 1) adapter.getItemId(position)
+    }
+
+    @Test
+    fun collidingKeysNeverShareAnItemId() {
+        val adapter = ResultAdapter(context, Recorder(), Ui.palette(context))
+        adapter.submit(listOf(
+            SearchItem("Aa", ItemKind.FILE, "first", "~/"),
+            SearchItem("BB", ItemKind.FILE, "second", "~/")
+        ))
+        assertEquals("Aa".hashCode(), "BB".hashCode())
+        assertNotEquals(adapter.getItemId(0), adapter.getItemId(1))
+        assertFalse(adapter.hasStableIds())
     }
 
     @Test
