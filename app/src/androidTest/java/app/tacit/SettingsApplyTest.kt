@@ -43,12 +43,14 @@ class SettingsApplyTest {
     fun setUp() {
         prefs.store.edit().clear().commit()
         Graph.applyPrefs()
+        Idle.await()
     }
 
     @After
     fun tearDown() {
         prefs.store.edit().clear().commit()
         Graph.applyPrefs()
+        Idle.await()
     }
 
     private fun views(activity: Activity): List<View> {
@@ -65,7 +67,10 @@ class SettingsApplyTest {
 
     private fun away(scenario: ActivityScenario<*>) = scenario.moveToState(Lifecycle.State.CREATED)
 
-    private fun back(scenario: ActivityScenario<*>) = scenario.moveToState(Lifecycle.State.RESUMED)
+    private fun back(scenario: ActivityScenario<*>) {
+        scenario.moveToState(Lifecycle.State.RESUMED)
+        Idle.await()
+    }
 
     private fun backdrop(): Int {
         val shot = instrumentation.uiAutomation.takeScreenshot()
@@ -243,6 +248,7 @@ class SettingsApplyTest {
             assertTrue(prefs.showClock)
             scenario.moveToState(Lifecycle.State.STARTED)
             scenario.moveToState(Lifecycle.State.RESUMED)
+            Idle.await()
             scenario.onActivity { assertEquals(before, scroll(it).scrollY) }
         }
     }
@@ -311,6 +317,7 @@ class SettingsApplyTest {
             clickText(context.getString(R.string.theme_light))
             assertTrue("settings did not turn white", waitForBackdrop(Color.WHITE))
             assertTrue("did not get back to search", backToSearch())
+            Idle.await()
             val shown = waitForShownClocks(scenario, 1)
             var state = ""
             scenario.onActivity {

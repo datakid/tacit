@@ -2,24 +2,36 @@ name: Android CI
 
 on:
   push:
+    branches: [main, beta]
   pull_request:
   workflow_dispatch:
 
 permissions:
   contents: write
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
-      - uses: actions/setup-java@v5
+      - name: Guard check
+        run: bash .github/scripts/guard-check.sh
+
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 17
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
 
       - name: Accept SDK licenses
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
@@ -29,6 +41,26 @@ jobs:
           chmod +x gradlew
           set -o pipefail
           ./gradlew assembleDebug testDebugUnitTest lintDebug --stacktrace --continue 2>&1 | tee build.log
+
+      - name: Golden actual output
+        if: always()
+        run: |
+          for f in app/build/golden-actual/*; do
+            [ -f "$f" ] || continue
+            name="$(basename "$f")"
+            sha="$(sha256sum "$f" | cut -c1-64)"
+            rm -rf golden-parts
+            mkdir golden-parts
+            xz -9e -c "$f" | base64 -w0 | fold -w 3500 > golden-parts/all
+            total="$(wc -l < golden-parts/all)"
+            total=$((total + 1))
+            split -l 1 -d -a 2 golden-parts/all golden-parts/part.
+            n=0
+            for p in golden-parts/part.*; do
+              n=$((n + 1))
+              echo "::notice title=Golden actual ${name} part ${n}/${total} sha256=${sha} xz+base64::$(cat "$p")"
+            done
+          done
 
       - name: Device tests compile
         if: always()
@@ -69,7 +101,7 @@ jobs:
         if: always()
         run: |
           {
-            grep -h -o 'TACIT_KEYSTROKE_JVM[^<]*' app/build/test-results/testDebugUnitTest/*.xml | head -2
+            grep -h -o -E 'TACIT_(KEYSTROKE|FILESEARCH)[A-Z_]* [^<]*' app/build/test-results/testDebugUnitTest/*.xml | head -4
             for f in app/build/outputs/apk/debug/*.apk app/build/outputs/apk/release/*.apk; do
               [ -f "$f" ] && echo "$(stat -c %s "$f") bytes $(basename "$f")"
             done
@@ -102,7 +134,7 @@ jobs:
 
       - name: Upload full build log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: build-log
           path: |
@@ -112,14 +144,14 @@ jobs:
 
       - name: Upload debug APK
         if: success()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: tacit-debug-apk
           path: app/build/outputs/apk/debug/*.apk
 
       - name: Upload release APK
         if: success()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: tacit-release-apk-unsigned
           path: app/build/outputs/apk/release/*.apk
@@ -139,21 +171,23 @@ jobs:
         run: bash .github/scripts/publish-release.sh
 
   device-tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
         api: [34, 35, 36]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 17
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
 
       - name: Enable KVM
         run: |
@@ -168,7 +202,7 @@ jobs:
           arch: x86_64
           target: google_apis
           disable-animations: true
-          script: bash .github/scripts/device-tests.sh app.tacit.SettingsApplyTest,app.tacit.SettingsScreenTest,app.tacit.ClipboardCaptureTest,app.tacit.ClipboardFocusTest,app.tacit.BatteryDisplayTest,app.tacit.QuicklinksTest,app.tacit.QuicklinksV2Test,app.tacit.AliasesTest,app.tacit.SearchScreenTest,app.tacit.ResultAdapterTest,app.tacit.ScreenPaddingTest,app.tacit.ScreenshotTest,app.tacit.ActionsTest,app.tacit.DrawerTest,app.tacit.FirstRunTest
+          script: bash .github/scripts/device-tests.sh app.tacit.SettingsApplyTest,app.tacit.SettingsScreenTest,app.tacit.ClipboardCaptureTest,app.tacit.ClipboardFocusTest,app.tacit.BatteryDisplayTest,app.tacit.QuicklinksTest,app.tacit.QuicklinksV2Test,app.tacit.AliasesTest,app.tacit.SearchScreenTest,app.tacit.ResultAdapterTest,app.tacit.ScreenPaddingTest,app.tacit.ScreenshotTest,app.tacit.ActionsTest,app.tacit.DrawerTest,app.tacit.FirstRunTest,app.tacit.BackupCompatTest,app.tacit.IntentContractTest,app.tacit.PlatformContractTest
 
       - name: Publish screenshots
         if: always() && matrix.api == 35 && github.ref == 'refs/heads/beta'

@@ -21,7 +21,7 @@ object FileMatcher {
         return FileQuery(terms, extension, folder)
     }
 
-    fun search(table: FileTable, raw: String, limit: Int, cancelled: () -> Boolean): List<FileHit> {
+    fun search(table: FileTable, raw: String, limit: Int, now: Long = System.currentTimeMillis(), cancelled: () -> Boolean): List<FileHit> {
         val query = parse(raw)
         if (query.terms.isEmpty() && query.extension == null) return emptyList()
         val implicitExtension = if (query.extension == null && query.terms.size > 1) query.terms.last().takeIf { it in COMMON_EXTENSIONS } else null
@@ -37,7 +37,7 @@ object FileMatcher {
             if (query.folder != null && !table.searchableDirectories[table.parent[i]].contains(query.folder)) continue
             val score = scoreName(name, terms)
             if (score <= 0) continue
-            val adjusted = score + recency(table.modified[i])
+            val adjusted = score + recency(table.modified[i], now)
             if (filled < limit) {
                 bestIndex[filled] = i
                 bestScore[filled] = adjusted
@@ -74,8 +74,8 @@ object FileMatcher {
         return total - name.length.coerceAtMost(80) / 4
     }
 
-    private fun recency(modified: Long): Int {
-        val ageDays = (System.currentTimeMillis() - modified) / 86_400_000L
+    private fun recency(modified: Long, now: Long): Int {
+        val ageDays = (now - modified) / 86_400_000L
         return when {
             ageDays < 1 -> 20
             ageDays < 7 -> 12

@@ -93,6 +93,7 @@ class ScreenshotTest {
         Graph.prefs.closeAfterAction = false
         Graph.prefs.resultCount = 14
         Graph.applyPrefs()
+        Idle.await()
         Graph.useItemsForTesting(items())
         shell("mkdir -p $folder")
     }
@@ -107,6 +108,7 @@ class ScreenshotTest {
         Graph.prefs.store.edit().clear().commit()
         Graph.applyPrefs()
         Graph.useItemsForTesting(null)
+        Idle.await()
     }
 
     private fun settle() {

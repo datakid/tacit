@@ -95,6 +95,7 @@ class QuicklinksV2Test {
         }
         Graph.quicklinkSource.reload()
         Graph.useItemsForTesting(null)
+        Idle.await()
         sample.delete()
     }
 

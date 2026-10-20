@@ -61,6 +61,7 @@ class DrawerTest {
         prefs.drawerEnabled = true
         prefs.resultCount = 8
         Graph.applyPrefs()
+        Idle.await()
         Graph.useItemsForTesting(apps + Fixtures.contacts(40) + systemSettings + perAppSettings)
     }
 
@@ -70,6 +71,7 @@ class DrawerTest {
         prefs.store.edit().clear().commit()
         Graph.applyPrefs()
         Graph.useItemsForTesting(null)
+        Idle.await()
         Graph.icons.clear()
     }
 

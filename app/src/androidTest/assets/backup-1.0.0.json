@@ -1,0 +1,112 @@
+{
+  "tacit_backup": 1,
+  "prefs": {
+    "theme": "dark",
+    "icon_mode": "color",
+    "density": "compact",
+    "drawer": true,
+    "bar_bottom": false,
+    "clock": true,
+    "date": true,
+    "result_count": 12,
+    "kind_order": "CONTACT,APP,SETTING,SNIPPET,ACTION,FILE,CALCULATOR,WEB,CLIPBOARD",
+    "contacts": true,
+    "strictness": "LOOSE",
+    "transliterate": false,
+    "default_engine": "g",
+    "country_code": "20",
+    "precision": 16,
+    "p_calc": "~",
+    "p_files": "\\",
+    "pins": [
+      "app:com.example.mail",
+      "app:com.example.notes"
+    ],
+    "hidden": [
+      "app:com.example.hidden"
+    ],
+    "clip_last_ts": 1700000000000,
+    "granted_trees": [
+      "content://com.android.externalstorage.documents/tree/primary%3ADocuments"
+    ]
+  },
+  "aliases": {
+    "app:com.example.mail": [
+      "mail",
+      "بريد"
+    ],
+    "setting:android.settings.WIFI_SETTINGS": [
+      "wifi",
+      "net"
+    ],
+    "ql:bkc00001": [
+      "maps",
+      "net"
+    ]
+  },
+  "snippets": [
+    {
+      "id": "bks00001",
+      "trigger": "sig",
+      "title": "Signature",
+      "body": "Best regards,\nAsmaa"
+    },
+    {
+      "id": "bks00002",
+      "trigger": "sh",
+      "title": "تحية",
+      "body": "مع أطيب التحيات"
+    }
+  ],
+  "quicklinks": [
+    {
+      "id": "bkc00001",
+      "name": "Maps",
+      "type": "URL",
+      "target": "https://example.com/search?q={query}",
+      "detail": ""
+    },
+    {
+      "id": "bkc00002",
+      "name": "Wi-Fi",
+      "type": "SETTING",
+      "target": "android.settings.WIFI_SETTINGS",
+      "detail": "Wi-Fi settings"
+    },
+    {
+      "id": "bkc00003",
+      "name": "Notes",
+      "type": "APP",
+      "target": "com.example.notes|com.example.notes.MainActivity|0",
+      "detail": "Notes"
+    },
+    {
+      "id": "bkc00004",
+      "name": "New note",
+      "type": "APP_SHORTCUT",
+      "target": "com.example.notes|compose|0",
+      "detail": "Notes · New note"
+    },
+    {
+      "id": "bkc00005",
+      "name": "Report",
+      "type": "FILE",
+      "target": "/storage/emulated/0/Documents/report.pdf",
+      "detail": "report.pdf"
+    },
+    {
+      "id": "bkc00006",
+      "name": "Downloads",
+      "type": "FOLDER",
+      "target": "/storage/emulated/0/Download",
+      "detail": "Download"
+    },
+    {
+      "id": "bkc00007",
+      "name": "Call Asmaa",
+      "type": "CONTACT",
+      "target": "call|+201001234567",
+      "detail": "Asmaa Gouda"
+    }
+  ]
+}

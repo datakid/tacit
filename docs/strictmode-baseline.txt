@@ -1,0 +1,32 @@
+StrictMode policy violations seen in the device-test job (logcat of all classes in the CI list), per API level.
+total = every "StrictMode policy violation" line; in_app = violations whose stack has an app.tacit frame.
+Source: the "strictmode" part of the "Device tests" notice, written by .github/scripts/device-tests.sh. Reported, not a failure.
+
+M8 (1.0.1-beta), run on 460874c32113eac1a66441626c0621a840a69e8f, 18 classes, 160 tests, all passing:
+API 34: total=472 in_app=388
+API 35: total=434 in_app=361
+API 36: total=425 in_app=374
+
+Same code with EntryPointsUiTest also in the list (run on 2d8686e, one test crashed the app):
+API 34: total=489 in_app=369
+API 35: total=440 in_app=372
+API 36: total=400 in_app=348
+
+Final branch head (run on 6634279661f9684c739308184d606bb32e6e9039, 18 classes, 160 tests, all passing):
+API 34: total=436 in_app=347
+API 35: total=419 in_app=353
+API 36: total=411 in_app=364
+
+Across the three runs the counts at one API level differ by up to 53 (total) and 41 (in_app), so small moves are noise.
+
+Most frequent app.tacit frames, API 35, run 460874c:
+94 app.tacit.ui.SearchActivity.onCreate
+80 app.tacit.ui.SettingsActivity.build
+75 app.tacit.TacitTestRunner.callApplicationOnCreate
+75 app.tacit.TacitApp.onCreate
+75 app.tacit.Graph.init
+74 app.tacit.ui.SettingsActivity.onResume
+72 app.tacit.Prefs.<init>
+54 app.tacit.ui.SearchActivity.buildViews
+54 app.tacit.Welcome.pending
+45 app.tacit.ui.QuicklinksActivity.edit$lambda$14

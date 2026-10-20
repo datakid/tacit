@@ -55,6 +55,7 @@ class QuicklinksTest {
         Graph.applyPrefs()
         Graph.quicklinks.upsert(link)
         Graph.quicklinkSource.reload()
+        Idle.await()
         Graph.useItemsForTesting(Fixtures.all() + Graph.quicklinkSource.items())
         Intents.init()
         intending(ExternalIntents.matcher()).respondWith(Instrumentation.ActivityResult(Activity.RESULT_OK, null))
@@ -66,6 +67,7 @@ class QuicklinksTest {
         Graph.quicklinks.all().filter { it.id == link.id || it.name == "uitest" }.forEach { Graph.quicklinks.delete(it.id) }
         Graph.quicklinkSource.reload()
         Graph.useItemsForTesting(null)
+        Idle.await()
     }
 
     private fun type(text: String) {

@@ -10,8 +10,8 @@ android {
         applicationId = "app.tacit"
         minSdk = 29
         targetSdk = 36
-        versionCode = 10000
-        versionName = "1.0.0"
+        versionCode = 10001
+        versionName = "1.0.1-beta"
         testInstrumentationRunner = "app.tacit.TacitTestRunner"
     }
 
@@ -36,8 +36,9 @@ android {
 
     lint {
         warningsAsErrors = false
-        abortOnError = false
+        abortOnError = true
         checkReleaseBuilds = false
+        baseline = file("lint-baseline.xml")
     }
 
     testOptions {

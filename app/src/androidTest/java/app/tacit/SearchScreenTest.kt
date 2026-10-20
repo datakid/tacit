@@ -49,6 +49,7 @@ class SearchScreenTest {
         prefs.clipBiometric = false
         prefs.resultCount = 8
         Graph.applyPrefs()
+        Idle.await()
         Graph.useItemsForTesting(Fixtures.all())
         Intents.init()
         intending(ExternalIntents.matcher()).respondWith(Instrumentation.ActivityResult(Activity.RESULT_OK, null))
@@ -61,6 +62,7 @@ class SearchScreenTest {
         scenario.close()
         Intents.release()
         Graph.useItemsForTesting(null)
+        Idle.await()
     }
 
     private fun type(text: String) {
