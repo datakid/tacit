@@ -41,6 +41,7 @@ import app.tacit.actions.ActionRows
 import app.tacit.actions.Actions
 import app.tacit.clip.ClipLock
 import app.tacit.core.AliasRules
+import app.tacit.core.ChangeGate
 import app.tacit.core.ComposeInput
 import app.tacit.core.DrawerList
 import app.tacit.core.DrawerTab
@@ -86,7 +87,14 @@ class SearchActivity : Activity(), RowCallbacks {
     private var strip: LetterStrip? = null
     private var bubble: TextView? = null
     private var welcomeCard: View? = null
-    private val refreshListener: () -> Unit = { if (::input.isInitialized) refreshRows() }
+    private val messengerGate = ChangeGate()
+    private var defaultHome: Boolean? = null
+    private val refreshListener: () -> Unit = {
+        if (::input.isInitialized) {
+            syncMessengers()
+            refreshRows()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         Ui.applyTheme(this)
@@ -443,7 +451,14 @@ class SearchActivity : Activity(), RowCallbacks {
         Welcome.finish(this)
     }
 
+    private fun syncMessengers(): Boolean {
+        if (!messengerGate.changed(Graph.packagesVersion)) return false
+        refreshMessengers()
+        return true
+    }
+
     private fun refreshMessengers() {
+        messengerGate.changed(Graph.packagesVersion)
         val installed = HashSet<ContactAction>()
         if (Actions.isInstalled(this, Actions.WHATSAPP)) installed.add(ContactAction.WHATSAPP)
         if (Actions.isInstalled(this, Actions.WHATSAPP_BUSINESS)) installed.add(ContactAction.WHATSAPP_BUSINESS)
@@ -474,9 +489,10 @@ class SearchActivity : Activity(), RowCallbacks {
     }
 
     private fun isDefaultHome(): Boolean {
+        defaultHome?.let { return it }
         val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
         val resolved = packageManager.resolveActivity(intent, 0)?.activityInfo
-        return resolved?.packageName == packageName
+        return (resolved?.packageName == packageName).also { defaultHome = it }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -489,7 +505,10 @@ class SearchActivity : Activity(), RowCallbacks {
 
     override fun onResume() {
         super.onResume()
+        defaultHome = null
         if (refreshLook()) return
+        if (syncMessengers()) adapter.notifyDataSetChanged()
+        Graph.refreshAliasedFileExistence()
         applyRecentsPreference()
         syncKeyboard()
         if (Graph.prefs.showBattery) {
@@ -710,7 +729,7 @@ class SearchActivity : Activity(), RowCallbacks {
         if (parsed.scope != Scope.ALL && parsed.scope != Scope.FILES) return emptyList()
         val files = Graph.aliasedFiles()
         if (files.isEmpty()) return emptyList()
-        val present = AliasRules.matching(parsed.text, files).filter { it.key.startsWith("file:content://") || File(it.key.removePrefix("file:")).exists() }
+        val present = AliasRules.matching(parsed.text, files).filter { Graph.aliasedFileExists(it.key) }
         return present.take(3).map { entry ->
             val path = entry.key.removePrefix("file:")
             SearchItem(entry.key, ItemKind.FILE, PathNames.name(path), PathNames.folder(path), payload = path)

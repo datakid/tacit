@@ -133,6 +133,7 @@ class AliasesTest {
         alias(fileKey(), "qlm3gone")
         sample.delete()
         ActivityScenario.launch(SearchActivity::class.java).use { scenario ->
+            Idle.await()
             type("qlm3gone")
             assertTrue(rows(scenario).none { it.key == fileKey() })
         }
