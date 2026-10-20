@@ -85,6 +85,7 @@
     <string name="ql_exists">الرابط السريع موجود بالفعل: %1$s</string>
     <string name="ql_bad_placeholder">تحقق من العناصر {…} في الرابط</string>
     <string name="ql_pin_unsupported">هذه الشاشة الرئيسية لا تدعم إضافة الاختصارات</string>
+    <string name="ql_pin_removed">حُذف هذا الرابط السريع</string>
     <string name="menu_create_quicklink">إنشاء رابط سريع</string>
     <string name="menu_add_home">إضافة إلى الشاشة الرئيسية</string>
     <string name="snippet_trigger">الاختصار</string>

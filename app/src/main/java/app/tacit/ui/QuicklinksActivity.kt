@@ -260,6 +260,7 @@ class QuicklinksActivity : Activity() {
             .setNegativeButton(R.string.cancel, null)
         if (existing != null) builder.setNeutralButton(R.string.menu_delete) { _, _ ->
             Graph.quicklinks.delete(existing.id)
+            PinShortcut.disable(this, existing.id)
             Graph.aliases.set("ql:${existing.id}", emptyList())
             Graph.reloadQuicklinks()
             reload()
@@ -296,7 +297,9 @@ class QuicklinksActivity : Activity() {
                 detail = pickedLabel
             }
             val id = existing?.id ?: Graph.quicklinks.newId()
-            Graph.quicklinks.upsert(Quicklink(id, title, type, target, detail))
+            val saved = Quicklink(id, title, type, target, detail)
+            Graph.quicklinks.upsert(saved)
+            if (existing != null && (existing.name != title || existing.type != type)) PinShortcut.update(this, saved)
             Graph.aliases.set("ql:$id", AliasText.split(aliases.text.toString()))
             Graph.reloadQuicklinks()
             reload()

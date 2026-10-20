@@ -87,6 +87,7 @@
     <string name="ql_exists">Quicklink already exists: %1$s</string>
     <string name="ql_bad_placeholder">Check the {…} placeholders in the link</string>
     <string name="ql_pin_unsupported">This launcher cannot add shortcuts</string>
+    <string name="ql_pin_removed">This quicklink was deleted</string>
     <string name="menu_create_quicklink">Create quicklink</string>
     <string name="menu_add_home">Add to home screen</string>
     <string name="snippet_trigger">Trigger</string>
