@@ -5,6 +5,8 @@ import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Context
 import android.os.Build
+import android.os.Handler
+import android.os.HandlerThread
 import android.os.PersistableBundle
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
@@ -43,6 +45,15 @@ class ClipboardStore(private val context: Context, private val prefs: Prefs) {
     private val lock = Any()
     private var entries: MutableList<ClipEntry>? = null
     private val manager get() = context.getSystemService(ClipboardManager::class.java)
+    private val handler by lazy { Handler(HandlerThread("tacit-clip").also { it.start() }.looper) }
+
+    fun post(task: Runnable) {
+        handler.post(task)
+    }
+
+    fun postDelayed(task: Runnable, delayMs: Long) {
+        handler.postDelayed(task, delayMs)
+    }
 
     fun all(): List<ClipEntry> = synchronized(lock) {
         val list = load()

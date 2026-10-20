@@ -541,8 +541,8 @@ class SearchActivity : Activity(), RowCallbacks {
         if (!hasFocus) return
         syncKeyboard()
         if (Graph.prefs.clipboardEnabled) {
-            Graph.worker.post(captureClip)
-            Graph.worker.postDelayed(captureClip, CLIP_RETRY_MS)
+            Graph.clipboard.post(captureClip)
+            Graph.clipboard.postDelayed(captureClip, CLIP_RETRY_MS)
         }
     }
 
