@@ -21,6 +21,7 @@ import app.tacit.R
 import app.tacit.TacitApp
 import app.tacit.data.Backup
 import app.tacit.clip.ClipLock
+import app.tacit.core.HiddenLabels
 import app.tacit.core.RowDensity
 import app.tacit.files.GrantedTrees
 import app.tacit.files.StorageAccess
@@ -286,7 +287,9 @@ class SettingsActivity : Activity() {
     private fun showHidden() {
         val keys = prefs.hidden.toList().sorted()
         if (keys.isEmpty()) return
-        val labels = keys.map { it.substringAfter(':').substringBefore('/') }.toTypedArray()
+        val known = Graph.apps.items() + Graph.settings.items() + Graph.contacts.items() +
+            Graph.snippetSource.items() + Graph.quicklinkSource.items()
+        val labels = HiddenLabels.resolve(keys, known).toTypedArray()
         val checked = BooleanArray(keys.size) { true }
         AlertDialog.Builder(this)
             .setTitle(R.string.hidden_title)
