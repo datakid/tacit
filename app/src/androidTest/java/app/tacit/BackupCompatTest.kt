@@ -4,10 +4,12 @@ import android.app.Activity
 import android.app.Instrumentation
 import android.content.Intent
 import android.net.Uri
+import android.view.View
+import android.view.ViewGroup
+import android.widget.ScrollView
 import androidx.test.core.app.ActivityScenario
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.action.ViewActions.click
-import androidx.test.espresso.action.ViewActions.scrollTo
 import androidx.test.espresso.assertion.ViewAssertions.matches
 import androidx.test.espresso.intent.Intents
 import androidx.test.espresso.intent.Intents.intending
@@ -199,8 +201,8 @@ class BackupCompatTest {
         try {
             intending(hasAction(Intent.ACTION_CREATE_DOCUMENT))
                 .respondWith(Instrumentation.ActivityResult(Activity.RESULT_OK, Intent().setData(Uri.fromFile(file))))
-            ActivityScenario.launch(SettingsActivity::class.java).use {
-                onView(withText(R.string.export_all)).perform(scrollTo(), click())
+            ActivityScenario.launch(SettingsActivity::class.java).use { scenario ->
+                clickSettingsRow(scenario, R.string.export_all)
                 InstrumentationRegistry.getInstrumentation().waitForIdleSync()
                 Idle.await()
             }
@@ -217,14 +219,28 @@ class BackupCompatTest {
         }
     }
 
+    private fun findScroll(view: View): ScrollView? {
+        if (view is ScrollView) return view
+        if (view is ViewGroup) for (i in 0 until view.childCount) findScroll(view.getChildAt(i))?.let { return it }
+        return null
+    }
+
+    private fun clickSettingsRow(scenario: ActivityScenario<SettingsActivity>, label: Int) {
+        scenario.onActivity { activity ->
+            findScroll(activity.window.decorView)?.let { it.scrollTo(0, it.getChildAt(0).height) }
+        }
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+        onView(withText(label)).perform(click())
+    }
+
     private fun confirmationText(): String =
         InstrumentationRegistry.getInstrumentation().targetContext.getString(R.string.import_confirm, 3, 2, 7)
 
     @Test
     fun importAsksFirstAndThenAppliesEverythingAtOnce() {
         withPickedBackup {
-            ActivityScenario.launch(SettingsActivity::class.java).use {
-                onView(withText(R.string.import_all)).perform(scrollTo(), click())
+            ActivityScenario.launch(SettingsActivity::class.java).use { scenario ->
+                clickSettingsRow(scenario, R.string.import_all)
                 onView(withText(confirmationText())).inRoot(isDialog()).check(matches(isDisplayed()))
                 assertEquals(0, Graph.snippets.all().size)
                 assertEquals(0, Graph.quicklinks.all().size)
@@ -243,8 +259,8 @@ class BackupCompatTest {
     fun cancellingTheImportKeepsEverything() {
         Graph.snippets.replaceAll(listOf(Snippet("keep-1", "k", "keep", "keep body")))
         withPickedBackup {
-            ActivityScenario.launch(SettingsActivity::class.java).use {
-                onView(withText(R.string.import_all)).perform(scrollTo(), click())
+            ActivityScenario.launch(SettingsActivity::class.java).use { scenario ->
+                clickSettingsRow(scenario, R.string.import_all)
                 onView(withText(confirmationText())).inRoot(isDialog()).check(matches(isDisplayed()))
                 onView(withText(R.string.cancel)).inRoot(isDialog()).perform(click())
                 Idle.await()
