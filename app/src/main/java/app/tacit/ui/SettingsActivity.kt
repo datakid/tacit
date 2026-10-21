@@ -15,13 +15,16 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.Switch
 import android.widget.TextView
+import android.widget.Toast
 import app.tacit.Graph
 import app.tacit.IndexCache
 import app.tacit.R
 import app.tacit.TacitApp
 import app.tacit.data.Backup
+import app.tacit.data.BackupSummary
 import app.tacit.clip.ClipLock
 import app.tacit.core.HiddenLabels
+import app.tacit.core.RefreshSources
 import app.tacit.core.RowDensity
 import app.tacit.files.GrantedTrees
 import app.tacit.files.StorageAccess
@@ -275,11 +278,44 @@ class SettingsActivity : Activity() {
             } else if (requestCode == REQ_EXPORT) {
                 contentResolver.openOutputStream(uri, "wt")?.use { it.write(Backup.export().toByteArray()) }
             } else if (requestCode == REQ_IMPORT) {
-                val text = contentResolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) } ?: return
-                Backup.import(text)
+                readBackup(uri)
+            }
+        }
+    }
+
+    private fun readBackup(uri: Uri) {
+        Graph.worker.post {
+            val text = runCatching { contentResolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) } }.getOrNull()
+            val summary = text?.let { Backup.summarize(it) }
+            Graph.main.post {
+                if (isFinishing || isDestroyed) return@post
+                if (text == null || summary == null) {
+                    Toast.makeText(this, R.string.import_invalid, Toast.LENGTH_LONG).show()
+                } else {
+                    confirmImport(text, summary)
+                }
+            }
+        }
+    }
+
+    private fun confirmImport(text: String, summary: BackupSummary) {
+        AlertDialog.Builder(this)
+            .setMessage(getString(R.string.import_confirm, summary.aliases, summary.snippets, summary.quicklinks))
+            .setPositiveButton(R.string.import_all) { _, _ -> applyImport(text) }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun applyImport(text: String) {
+        val themeBefore = prefs.theme
+        Graph.worker.post {
+            runCatching { Backup.import(text) }
+            Graph.main.post {
                 Graph.applyPrefs()
-                Graph.requestRefresh()
-                build()
+                Graph.icons.clear()
+                Graph.requestRefresh(RefreshSources.ALL)
+                if (isFinishing || isDestroyed) return@post
+                if (prefs.theme != themeBefore) recreate() else build()
             }
         }
     }

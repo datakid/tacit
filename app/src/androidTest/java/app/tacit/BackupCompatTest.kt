@@ -1,20 +1,38 @@
 package app.tacit
 
+import android.app.Activity
+import android.app.Instrumentation
+import android.content.Intent
+import android.net.Uri
+import androidx.test.core.app.ActivityScenario
+import androidx.test.espresso.Espresso.onView
+import androidx.test.espresso.action.ViewActions.click
+import androidx.test.espresso.action.ViewActions.scrollTo
+import androidx.test.espresso.assertion.ViewAssertions.matches
+import androidx.test.espresso.intent.Intents
+import androidx.test.espresso.intent.Intents.intending
+import androidx.test.espresso.intent.matcher.IntentMatchers.hasAction
+import androidx.test.espresso.matcher.RootMatchers.isDialog
+import androidx.test.espresso.matcher.ViewMatchers.isDisplayed
+import androidx.test.espresso.matcher.ViewMatchers.withText
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import app.tacit.core.QuicklinkType
 import app.tacit.data.Backup
 import app.tacit.data.Quicklink
 import app.tacit.data.Snippet
+import app.tacit.ui.SettingsActivity
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.io.File
 
 @RunWith(AndroidJUnit4::class)
 class BackupCompatTest {
@@ -145,5 +163,68 @@ class BackupCompatTest {
         assertEquals("dark", prefs.getString("theme"))
         assertEquals(12, prefs.getInt("result_count"))
         assertEquals(setOf("app:com.example.mail", "app:com.example.notes"), strings(prefs.getJSONArray("pins")).toSet())
+    }
+
+    @Test
+    fun summaryCountsTheFixtureAndRejectsOtherFiles() {
+        val summary = Backup.summarize(fixtureText)!!
+        assertEquals(3, summary.aliases)
+        assertEquals(2, summary.snippets)
+        assertEquals(7, summary.quicklinks)
+        assertNull(Backup.summarize("not json at all"))
+        assertNull(Backup.summarize("{\"prefs\":{}}"))
+        assertEquals(0, Backup.summarize("{\"tacit_backup\":1}")!!.quicklinks)
+    }
+
+    private fun withPickedBackup(block: (File) -> Unit) {
+        val folder = InstrumentationRegistry.getInstrumentation().targetContext.getExternalFilesDir(null)!!
+        val file = File(folder, "backup-ui-test.json").apply { writeText(fixtureText) }
+        Intents.init()
+        try {
+            intending(hasAction(Intent.ACTION_OPEN_DOCUMENT))
+                .respondWith(Instrumentation.ActivityResult(Activity.RESULT_OK, Intent().setData(Uri.fromFile(file))))
+            block(file)
+        } finally {
+            Intents.release()
+            file.delete()
+        }
+    }
+
+    private fun confirmationText(): String =
+        InstrumentationRegistry.getInstrumentation().targetContext.getString(R.string.import_confirm, 3, 2, 7)
+
+    @Test
+    fun importAsksFirstAndThenAppliesEverythingAtOnce() {
+        withPickedBackup {
+            ActivityScenario.launch(SettingsActivity::class.java).use {
+                onView(withText(R.string.import_all)).perform(scrollTo(), click())
+                onView(withText(confirmationText())).inRoot(isDialog()).check(matches(isDisplayed()))
+                assertEquals(0, Graph.snippets.all().size)
+                assertEquals(0, Graph.quicklinks.all().size)
+                assertEquals(emptyMap<String, List<String>>(), Graph.aliases.all())
+                onView(withText(R.string.import_all)).inRoot(isDialog()).perform(click())
+                Idle.await()
+                assertEquals(expectedAliases(fixture), Graph.aliases.all())
+                assertEquals(expectedSnippets(fixture), Graph.snippets.all())
+                assertEquals(expectedQuicklinks(fixture), Graph.quicklinks.all())
+                assertEquals("dark", Graph.prefs.theme)
+            }
+        }
+    }
+
+    @Test
+    fun cancellingTheImportKeepsEverything() {
+        Graph.snippets.replaceAll(listOf(Snippet("keep-1", "k", "keep", "keep body")))
+        withPickedBackup {
+            ActivityScenario.launch(SettingsActivity::class.java).use {
+                onView(withText(R.string.import_all)).perform(scrollTo(), click())
+                onView(withText(confirmationText())).inRoot(isDialog()).check(matches(isDisplayed()))
+                onView(withText(R.string.cancel)).inRoot(isDialog()).perform(click())
+                Idle.await()
+                assertEquals(listOf("keep-1"), Graph.snippets.all().map { it.id })
+                assertEquals(emptyMap<String, List<String>>(), Graph.aliases.all())
+                assertEquals(0, Graph.quicklinks.all().size)
+            }
+        }
     }
 }

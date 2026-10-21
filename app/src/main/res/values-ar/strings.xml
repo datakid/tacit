@@ -177,6 +177,8 @@
     <string name="keys_body">Enter  فتح النتيجة الأولى\n↑ ↓  تنقل\nTab  إجراءات أخرى\nEsc  مسح ثم إغلاق\nضغط مطوّل  إجراءات أخرى\n\n%1$s  الآلة الحاسبة\n%2$s ⎵  الحافظة\n%3$s  الإعدادات\n%4$s  جهات الاتصال\n%5$s  الملفات\n%6$s  المقتطفات\next:pdf  in:download  مرشحات الملفات\n\n%7$s</string>
     <string name="export_all">تصدير كل شيء</string>
     <string name="import_all">استيراد</string>
+    <string name="import_confirm">استبدال إعداداتك و%1$d اسمًا مستعارًا و%2$d مقتطفًا و%3$d رابطًا سريعًا بالنسخة الاحتياطية؟</string>
+    <string name="import_invalid">هذا الملف ليس نسخة احتياطية من Tacit</string>
     <string name="share_crash">مشاركة آخر عطل</string>
     <string name="rebuild_index">إعادة بناء الفهرس</string>
     <string name="about_line">Tacit. بلا إنترنت. بلا تتبع. GPL-3.0.</string>
