@@ -1,0 +1,7 @@
+Bug-fix build.
+• Home no longer crashes Tacit on an empty list
+• Contact buttons and long snippets show at startup
+• WhatsApp buttons and app icons follow installs and updates
+• Pinned shortcuts follow quicklink renames and deletes
+• Import asks before it replaces your data
+• Less work while typing

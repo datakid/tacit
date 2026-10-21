@@ -21,7 +21,7 @@ Tacit is at 1.0.1-beta (1.0.0 plus the safety net for 1.1). CI builds it, runs t
 ## Versions and CI
 - Versions: one minor per milestone with `-beta` until 1.0.0 (decision 31). `versionCode = major * 10000 + minor * 100 + patch`. The release tag is the newest file name in `docs/release-notes`; a name without a suffix is a stable release.
 - `build` job: debug build, unit tests (including `KeystrokeBudgetTest` and `RepoRulesTest`), lint, device-test compile, release build, a repeat release build with a byte comparison, benchmark module compile, signing-script check with a throwaway key, then publishing on `main`. The "Perf and size" and "Repeatable build" annotations hold the numbers.
-- `device-tests` job: API 34, 35 and 36 emulators, one Gradle run per test class (`.github/scripts/device-tests.sh`). `BackupCompatTest`, `IntentContractTest` and `PlatformContractTest` are in the list. `EntryPointsUiTest` is compiled but left out: `typingThenHomeClearsQuery` crashes the app on API 34, 35 and 36 (`SearchActivity.onNewIntent` calls `list.setSelection(0)` and `ResultAdapter.getItemId` reads `items[0]` of an empty list, `IndexOutOfBoundsException` at `ResultAdapter.kt:77`; bug B18 in the 1.1 plan). Put the class back in the list when that is fixed.
+- `device-tests` job: API 34, 35 and 36 emulators, one Gradle run per test class (`.github/scripts/device-tests.sh`). `BackupCompatTest`, `IntentContractTest` and `PlatformContractTest` are in the list. `EntryPointsUiTest` and `IconCacheTest` are in the list too; `EntryPointsUiTest` was out until 1.0.2-beta because `ResultAdapter.getItemId` crashed on an empty list (B18, decision 72).
 - Device tests run with `TacitTestRunner`, which creates the first-run marker so only `FirstRunTest` sees the welcome card.
 - `SettingsApplyTest` has failed once on a different test in each of three milestones and passed on re-run. Ten isolated runs on API 35 all passed, so its cause is still not found. A sibling flake (`ActionsTest`, API 34) was traced to the worker's startup and refresh tasks replacing the items a test had injected, and `Idle.await()` now waits for the worker and the main thread around item injection and preference changes (decision 69).
 - `guard-check.sh` runs first in the `build` job and fails on a lower `@Test` count or an added `Ignore`/`Assume` (decision 66). `RankingGoldenTest` and `FileGoldenTest` compare against `app/src/test/resources/golden/*.tsv`; change those files only with the owner's approval (decision 67). Lint fails on new errors (decision 68). The device-test notice starts with StrictMode counts, compared with `docs/strictmode-baseline.txt` (decision 69).
@@ -36,7 +36,7 @@ Tacit is at 1.0.1-beta (1.0.0 plus the safety net for 1.1). CI builds it, runs t
 - `actions/`: every outgoing intent, the typed-action rows (`ActionRows`), quicklink launching and pinned shortcuts, the contact export screen and the read-only file provider.
 - `ui/`: search screen (platform `ListView`, no RecyclerView), settings, aliases, snippets, quicklinks, long-press menu, icon cache, app drawer letter strip.
 - `system/`: tile, widget, assistant stubs, battery text.
-- `Graph`: the shared singleton with a single worker `HandlerThread`. `IndexCache` writes the binary snapshot read at startup. `Welcome` holds the first-run marker.
+- `Graph`: the shared singleton with a single worker `HandlerThread`. `IndexCache` writes the binary snapshot read at startup (format in `core/IndexCodec`, version 4, decision 71). `Graph.requestRefresh(mask)` coalesces refreshes (decision 70). The clipboard captures on its own `tacit-clip` thread (decision 72). `Welcome` holds the first-run marker.
 
 ## On-device checklist
 - [ ] Typing feels instant with 300+ apps and 2,000+ contacts; no dropped frames while typing
@@ -48,6 +48,9 @@ Tacit is at 1.0.1-beta (1.0.0 plus the safety net for 1.1). CI builds it, runs t
 - [ ] Settings coverage: write down which common screens are missing (Pixel, Samsung, Xiaomi)
 - [ ] Files: All files access flow, Choose folders flow (Settings → Files → Choose folders → Documents → Rescan), rescan time, opening a PDF or an image, open folder
 - [ ] Clipboard: copy in another app, open Tacit, check it's captured; the toast appears only for new clips; OTPs are not stored; lock works
+- [ ] Install, update and uninstall an app while Tacit is open: the row and its icon update within a second or two; install or remove WhatsApp and the contact buttons follow when you return to Tacit
+- [ ] Settings → Import: choose a backup, the counts dialog appears, Cancel changes nothing, Replace applies everything and the theme at once
+- [ ] Rename a quicklink that is pinned to the home screen: the shortcut label changes; delete it and the shortcut says it was deleted
 - [ ] Alias table: batch edit, CSV round trip, a shared alias shows every item
 - [ ] Quicklinks: one of each type, pin to home screen, a deleted target opens its editor
 - [ ] Quick actions: `timer 10 tea`, `alarm 7:30`, `event dentist tomorrow 3pm` open the clock and calendar apps with the right values
@@ -62,5 +65,6 @@ Tacit is at 1.0.1-beta (1.0.0 plus the safety net for 1.1). CI builds it, runs t
 - Files: make the scan as fast as possible, and show a clear scanning state while the index is being built, so a search in the first minutes is not read as "not found" (2026-10-16). A files tab in the drawer waits for this (decision 58).
 - Find the cause of the `SettingsApplyTest` flake (1.0.1-beta: not reproduced in ten isolated runs, idle waits added, decision 69).
 - Narrow phones: the four contact buttons can truncate the name.
+- Main-thread disk work that is left (1.0.2-beta): `Prefs` loads its preferences inside `Graph.init`, `Welcome.pending` checks its marker file once per process, and the quicklink editor saves, deletes and rechecks targets on the main thread (the stores write their files synchronously, and several device tests read them straight after the click). Moving the editor to the worker needs an asynchronous store API first.
 - GitHub Actions: `ubuntu-latest` moves to Ubuntu 26 on 2026-10-19; the Node 20 action deprecation also needs a look (1.0.1-beta: runners pinned to `ubuntu-24.04`, actions on node24 majors, `setup-gradle` with `cache-provider: basic`).
 - Add real phone screenshots to `fastlane/metadata/android/*/images/phoneScreenshots/`.
