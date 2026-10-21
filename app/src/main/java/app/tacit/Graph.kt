@@ -59,6 +59,10 @@ object Graph {
 
     private const val REFRESH_DELAY_MS = 400L
 
+    @Volatile
+    var crashReportSaved = false
+        private set
+
     private val listeners = ArrayList<() -> Unit>()
     private val rebuildQueued = AtomicBoolean(false)
 
@@ -70,6 +74,7 @@ object Graph {
         worker = Handler(thread.looper)
         applyPrefs()
         worker.post {
+            crashReportSaved = File(appContext.filesDir, TacitApp.CRASH_FILE).exists()
             val cached = IndexCache.read(appContext)
             if (cached != null) {
                 engine.replaceItems(cached)

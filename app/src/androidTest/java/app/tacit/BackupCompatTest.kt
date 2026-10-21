@@ -190,6 +190,33 @@ class BackupCompatTest {
         }
     }
 
+    @Test
+    fun exportWritesTheBackupToThePickedFile() {
+        Backup.import(fixtureText)
+        val folder = InstrumentationRegistry.getInstrumentation().targetContext.getExternalFilesDir(null)!!
+        val file = File(folder, "backup-export-ui-test.json").apply { writeText("x".repeat(100_000)) }
+        Intents.init()
+        try {
+            intending(hasAction(Intent.ACTION_CREATE_DOCUMENT))
+                .respondWith(Instrumentation.ActivityResult(Activity.RESULT_OK, Intent().setData(Uri.fromFile(file))))
+            ActivityScenario.launch(SettingsActivity::class.java).use {
+                onView(withText(R.string.export_all)).perform(scrollTo(), click())
+                InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+                Idle.await()
+            }
+            val text = file.readText()
+            assertFalse("the old content was not replaced", text.contains("xxxx"))
+            val exported = JSONObject(text)
+            assertEquals(1, exported.getInt("tacit_backup"))
+            assertEquals(expectedAliases(fixture), expectedAliases(exported))
+            assertEquals(expectedSnippets(fixture), expectedSnippets(exported))
+            assertEquals(expectedQuicklinks(fixture), expectedQuicklinks(exported))
+        } finally {
+            Intents.release()
+            file.delete()
+        }
+    }
+
     private fun confirmationText(): String =
         InstrumentationRegistry.getInstrumentation().targetContext.getString(R.string.import_confirm, 3, 2, 7)
 

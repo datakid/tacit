@@ -153,16 +153,23 @@ class SettingsActivity : Activity() {
         action(getString(R.string.import_all)) {
             startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"), REQ_IMPORT)
         }
-        val crash = File(filesDir, TacitApp.CRASH_FILE)
-        if (crash.exists()) action(getString(R.string.share_crash)) {
-            val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, crash.readText())
-            startActivity(Intent.createChooser(send, null))
-        }
+        if (Graph.crashReportSaved) action(getString(R.string.share_crash)) { shareCrashReport() }
         action(getString(R.string.rebuild_index)) {
             IndexCache.clear(this)
             Graph.requestRefresh()
         }
         note(R.string.about_line)
+    }
+
+    private fun shareCrashReport() {
+        Graph.worker.post {
+            val text = runCatching { File(filesDir, TacitApp.CRASH_FILE).readText() }.getOrNull() ?: return@post
+            Graph.main.post {
+                if (isFinishing || isDestroyed) return@post
+                val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text)
+                startActivity(Intent.createChooser(send, null))
+            }
+        }
     }
 
     private fun rebuildSoon() {
@@ -276,10 +283,16 @@ class SettingsActivity : Activity() {
                 Graph.files.rescan { Graph.main.post { build() } }
                 build()
             } else if (requestCode == REQ_EXPORT) {
-                contentResolver.openOutputStream(uri, "wt")?.use { it.write(Backup.export().toByteArray()) }
+                writeBackup(uri)
             } else if (requestCode == REQ_IMPORT) {
                 readBackup(uri)
             }
+        }
+    }
+
+    private fun writeBackup(uri: Uri) {
+        Graph.worker.post {
+            runCatching { contentResolver.openOutputStream(uri, "wt")?.use { it.write(Backup.export().toByteArray()) } }
         }
     }
 

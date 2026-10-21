@@ -34,7 +34,6 @@ import android.window.OnBackInvokedCallback
 import android.window.OnBackInvokedDispatcher
 import app.tacit.Graph
 import app.tacit.R
-import app.tacit.TacitApp
 import app.tacit.Welcome
 import app.tacit.system.BatteryStatus
 import app.tacit.actions.ActionRows
@@ -53,7 +52,6 @@ import app.tacit.core.Scope
 import app.tacit.core.SearchItem
 import app.tacit.files.FileHit
 import app.tacit.sources.ContactInfo
-import java.io.File
 
 class SearchActivity : Activity(), RowCallbacks {
 
@@ -738,7 +736,7 @@ class SearchActivity : Activity(), RowCallbacks {
 
     private fun crashRows(raw: String): List<SearchItem> {
         if (!raw.trim().equals("crash", ignoreCase = true)) return emptyList()
-        if (!File(filesDir, TacitApp.CRASH_FILE).exists()) return emptyList()
+        if (!Graph.crashReportSaved) return emptyList()
         return listOf(SearchItem("crash", ItemKind.ACTION, getString(R.string.share_crash), "", payload = "crash|share"))
     }
 
