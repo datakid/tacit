@@ -87,6 +87,7 @@
     <string name="ql_exists">Quicklink already exists: %1$s</string>
     <string name="ql_bad_placeholder">Check the {…} placeholders in the link</string>
     <string name="ql_pin_unsupported">This launcher cannot add shortcuts</string>
+    <string name="ql_pin_removed">This quicklink was deleted</string>
     <string name="menu_create_quicklink">Create quicklink</string>
     <string name="menu_add_home">Add to home screen</string>
     <string name="snippet_trigger">Trigger</string>
@@ -179,6 +180,8 @@
     <string name="keys_body">Enter  open top result\n↑ ↓  move\nTab  more actions\nEsc  clear, then close\nLong press  more actions\n\n%1$s  calculator\n%2$s ⎵  clipboard\n%3$s  settings\n%4$s  contacts\n%5$s  files\n%6$s  snippets\next:pdf  in:download  file filters\n\n%7$s</string>
     <string name="export_all">Export everything</string>
     <string name="import_all">Import</string>
+    <string name="import_confirm">Replace your settings, %1$d aliases, %2$d snippets and %3$d quicklinks with the backup?</string>
+    <string name="import_invalid">This file is not a Tacit backup</string>
     <string name="share_crash">Share last crash</string>
     <string name="rebuild_index">Rebuild index</string>
     <string name="about_line">Tacit. Offline. No tracking. GPL-3.0.</string>

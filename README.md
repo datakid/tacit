@@ -36,7 +36,7 @@ A keyboard-first, offline, black-and-white Android launcher. You type, press Ent
   - Encrypted with AES-256-GCM (key in Android Keystore). Retention in days and/or items, where 0 means forever.
   - FLAG_SECURE while the clipboard is visible (`cb ` prefix).
   - Optional **lock**: fingerprint, face or screen lock (platform `BiometricPrompt`, no library) before the clipboard is shown. It locks again whenever Tacit leaves the screen.
-- **Quicklinks**: your own rows (Settings → Quicklinks, or Create quicklink in any row's long-press menu). A quicklink opens a web address, an app deep link, a file, a folder, a setting, an app, or a contact action (call, SMS, WhatsApp). Web templates take `{query}`, `{clipboard}` and `{date}`. A link whose target is gone opens its editor instead of failing. It can be pinned to the home screen.
+- **Quicklinks**: your own rows (Settings → Quicklinks, or Create quicklink in any row's long-press menu). A quicklink opens a web address, an app deep link, a file, a folder, a setting, an app, or a contact action (call, SMS, WhatsApp). Web templates take `{query}`, `{clipboard}` and `{date}`. A link whose target is gone opens its editor instead of failing. It can be pinned to the home screen; renaming it updates the pinned shortcut and deleting it disables the shortcut with a message.
 - **Aliases**:
   - Several per item, comma-separated (Arabic comma works too). One table per category: Apps, Contacts, Settings, Snippets, Shortcuts.
   - One alias can sit on several items; all of them rank at the top, and shared aliases are listed above the table.
@@ -51,7 +51,7 @@ A keyboard-first, offline, black-and-white Android launcher. You type, press Ent
 - **Web search**: DuckDuckGo (default), Google, Wikipedia, YouTube, OpenStreetMap. Engines are editable in Settings. The query opens in your browser.
 - **Row size and app drawer**: rows are Comfortable (64 dp, large icons) by default or Compact (56 dp), in Settings → Look. An optional app drawer, off by default, adds an Apps button beside Settings: an A–Z list of installed apps with a letter strip. Long-press works as in search. A System settings tab can be added next to Apps (Settings → Look).
 - **Ways to open it**: default Home, Assistant (minimal voice service stub, no voice features), Quick Settings tile, Tacit's own search-bar widget for other launchers, launcher app shortcuts, hardware keys (↑ ↓ Enter Tab Esc).
-- Export and import of everything as one JSON file. Offline crash log with "Share last crash". Backup is disabled.
+- Export and import of everything as one JSON file. Import first shows how many aliases, snippets and quicklinks the file holds and replaces your data only after you confirm. Offline crash log with "Share last crash". Backup is disabled.
 - **Arabic** translation of every screen; RTL layout.
 
 ## Prefixes (editable)

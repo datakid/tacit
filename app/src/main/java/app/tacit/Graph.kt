@@ -9,8 +9,11 @@ import app.tacit.calc.Calculator
 import app.tacit.clip.ClipboardStore
 import app.tacit.core.AliasEntry
 import app.tacit.core.AliasRules
+import app.tacit.core.ExistenceCache
 import app.tacit.core.IndexOptions
 import app.tacit.core.PrefixGrammar
+import app.tacit.core.RefreshCoalescer
+import app.tacit.core.RefreshSources
 import app.tacit.core.SearchEngine
 import app.tacit.core.SearchItem
 import app.tacit.data.AliasStore
@@ -23,6 +26,7 @@ import app.tacit.sources.QuicklinkSource
 import app.tacit.sources.SettingSource
 import app.tacit.sources.SnippetSource
 import app.tacit.ui.IconCache
+import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 
 @SuppressLint("StaticFieldLeak")
@@ -53,6 +57,12 @@ object Graph {
     val snippetSource by lazy { SnippetSource(snippets) }
     val quicklinkSource by lazy { QuicklinkSource(quicklinks) }
 
+    private const val REFRESH_DELAY_MS = 400L
+
+    @Volatile
+    var crashReportSaved = false
+        private set
+
     private val listeners = ArrayList<() -> Unit>()
     private val rebuildQueued = AtomicBoolean(false)
 
@@ -64,6 +74,7 @@ object Graph {
         worker = Handler(thread.looper)
         applyPrefs()
         worker.post {
+            crashReportSaved = File(appContext.filesDir, TacitApp.CRASH_FILE).exists()
             val cached = IndexCache.read(appContext)
             if (cached != null) {
                 engine.replaceItems(cached)
@@ -96,11 +107,18 @@ object Graph {
     }
 
     fun refreshAll() {
-        apps.reload()
-        if (prefs.contactsEnabled) contacts.reload() else contacts.clear()
-        settings.reload(apps.items())
-        snippetSource.reload()
-        quicklinkSource.reload()
+        refresh(RefreshSources.ALL)
+    }
+
+    private fun refresh(requested: Int) {
+        val sources = RefreshSources.expand(requested)
+        if ((sources and RefreshSources.APPS) != 0) apps.reload()
+        if ((sources and RefreshSources.CONTACTS) != 0) {
+            if (prefs.contactsEnabled) contacts.reload() else contacts.clear()
+        }
+        if ((sources and RefreshSources.SETTINGS) != 0) settings.reload(apps.items())
+        if ((sources and RefreshSources.SNIPPETS) != 0) snippetSource.reload()
+        if ((sources and RefreshSources.QUICKLINKS) != 0) quicklinkSource.reload()
         rebuild()
     }
 
@@ -110,14 +128,35 @@ object Graph {
     @Volatile
     private var fileAliasVersion = -1
 
+    private val fileExistence = ExistenceCache()
+
+    @Volatile
+    var packagesVersion = 0
+        private set
+
+    fun packagesChanged() {
+        packagesVersion++
+    }
+
     fun aliasedFiles(): List<AliasEntry> {
         val current = aliases.version
         if (current != fileAliasVersion) {
             fileAliasEntries = aliases.all().filterKeys { it.startsWith("file:") }
                 .map { AliasEntry(it.key, it.value.map(AliasRules::key)) }
             fileAliasVersion = current
+            refreshAliasedFileExistence()
         }
         return fileAliasEntries
+    }
+
+    fun aliasedFileExists(key: String): Boolean = fileExistence.present(key)
+
+    fun refreshAliasedFileExistence() {
+        worker.post {
+            fileExistence.rebuild(aliasedFiles().map { it.key }) { key ->
+                key.startsWith("file:content://") || File(key.removePrefix("file:")).exists()
+            }
+        }
     }
 
     fun reloadQuicklinks() {
@@ -136,8 +175,16 @@ object Graph {
         }
     }
 
-    fun requestRefresh() {
-        worker.post { refreshAll() }
+    private val refreshCoalescer by lazy {
+        RefreshCoalescer(REFRESH_DELAY_MS, { delay, task -> worker.postDelayed(task, delay) }, { bits -> refresh(bits) })
+    }
+
+    fun requestRefresh(sources: Int = RefreshSources.ALL) {
+        refreshCoalescer.request(sources)
+    }
+
+    fun flushRefresh() {
+        worker.post { refreshCoalescer.flush() }
     }
 
     @Volatile
@@ -149,7 +196,7 @@ object Graph {
             engine.replaceItems(items)
             main.post { listeners.forEach { it() } }
         } else {
-            requestRefresh()
+            worker.post { refreshAll() }
         }
     }
 

@@ -6,9 +6,21 @@ import app.tacit.core.QuicklinkType
 import org.json.JSONArray
 import org.json.JSONObject
 
+class BackupSummary(val aliases: Int, val snippets: Int, val quicklinks: Int)
+
 object Backup {
 
     private const val VERSION = 1
+
+    fun summarize(text: String): BackupSummary? {
+        val root = runCatching { JSONObject(text) }.getOrNull() ?: return null
+        if (!root.has("tacit_backup")) return null
+        return BackupSummary(
+            root.optJSONObject("aliases")?.length() ?: 0,
+            root.optJSONArray("snippets")?.length() ?: 0,
+            root.optJSONArray("quicklinks")?.length() ?: 0
+        )
+    }
 
     fun export(): String {
         val root = JSONObject()

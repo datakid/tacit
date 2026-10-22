@@ -1,5 +1,6 @@
 package app.tacit
 
+import android.database.DataSetObserver
 import android.graphics.drawable.Drawable
 import android.view.View
 import android.view.ViewGroup
@@ -16,6 +17,8 @@ import app.tacit.ui.ResultAdapter
 import app.tacit.ui.RowCallbacks
 import app.tacit.ui.Ui
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
@@ -205,6 +208,46 @@ class ResultAdapterTest {
             val visible = buttons.filter { effectivelyVisible(it) }.map { it.tag }
             assertEquals(listOf(ContactAction.CALL, ContactAction.MESSAGE), visible)
         }
+    }
+
+    @Test
+    fun itemIdsAreSafeForAnyPosition() {
+        val adapter = ResultAdapter(context, Recorder(), Ui.palette(context))
+        for (position in -1..3) adapter.getItemId(position)
+        adapter.submit(everything)
+        for (position in -1..everything.size + 1) adapter.getItemId(position)
+    }
+
+    @Test
+    fun submitNotifiesTheListOncePerCall() {
+        val adapter = adapter(Recorder(), emptySet())
+        var changes = 0
+        adapter.registerDataSetObserver(object : DataSetObserver() {
+            override fun onChanged() {
+                changes++
+            }
+        })
+        onMain { adapter.submit(everything.take(5), 3) }
+        assertEquals(1, changes)
+        assertEquals(3, adapter.selected)
+        assertEquals(5, adapter.count)
+        onMain { adapter.submit(everything.take(1)) }
+        assertEquals(2, changes)
+        assertEquals(0, adapter.selected)
+        onMain { adapter.selected = 0 }
+        assertEquals(3, changes)
+    }
+
+    @Test
+    fun collidingKeysNeverShareAnItemId() {
+        val adapter = ResultAdapter(context, Recorder(), Ui.palette(context))
+        adapter.submit(listOf(
+            SearchItem("Aa", ItemKind.FILE, "first", "~/"),
+            SearchItem("BB", ItemKind.FILE, "second", "~/")
+        ))
+        assertEquals("Aa".hashCode(), "BB".hashCode())
+        assertNotEquals(adapter.getItemId(0), adapter.getItemId(1))
+        assertFalse(adapter.hasStableIds())
     }
 
     @Test

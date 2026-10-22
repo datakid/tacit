@@ -8,6 +8,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.drawable.Icon
+import app.tacit.R
 import app.tacit.data.Quicklink
 import app.tacit.ui.IconSet
 import app.tacit.ui.QuicklinkIcons
@@ -36,6 +37,19 @@ object PinShortcut {
         val manager = context.getSystemService(ShortcutManager::class.java) ?: return false
         if (!manager.isRequestPinShortcutSupported) return false
         return manager.requestPinShortcut(info(context, link), null)
+    }
+
+    fun update(context: Context, link: Quicklink) {
+        runCatching {
+            context.getSystemService(ShortcutManager::class.java)?.updateShortcuts(listOf(info(context, link)))
+        }
+    }
+
+    fun disable(context: Context, id: String) {
+        runCatching {
+            context.getSystemService(ShortcutManager::class.java)
+                ?.disableShortcuts(listOf("ql-$id"), context.getString(R.string.ql_pin_removed))
+        }
     }
 
     private fun icon(context: Context, link: Quicklink): Icon {

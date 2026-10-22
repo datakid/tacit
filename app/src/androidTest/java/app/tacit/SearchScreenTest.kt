@@ -3,6 +3,7 @@ package app.tacit
 import android.app.Activity
 import android.app.Instrumentation
 import android.content.Intent
+import android.database.DataSetObserver
 import android.view.WindowManager
 import android.widget.EditText
 import android.widget.ListView
@@ -33,6 +34,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.util.concurrent.atomic.AtomicInteger
 
 @RunWith(AndroidJUnit4::class)
 class SearchScreenTest {
@@ -85,6 +87,24 @@ class SearchScreenTest {
             for (i in 0 until view.childCount) findList(view.getChildAt(i))?.let { return it }
         }
         return null
+    }
+
+    @Test
+    fun aKeystrokeUpdatesTheListOnce() {
+        val changes = AtomicInteger()
+        scenario.onActivity { activity ->
+            findList(activity.window.decorView)!!.adapter.registerDataSetObserver(object : DataSetObserver() {
+                override fun onChanged() {
+                    changes.incrementAndGet()
+                }
+            })
+        }
+        Idle.await()
+        changes.set(0)
+        type("gos")
+        assertEquals(1, changes.get())
+        type("gou")
+        assertEquals(2, changes.get())
     }
 
     @Test

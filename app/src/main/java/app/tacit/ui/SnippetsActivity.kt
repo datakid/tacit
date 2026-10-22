@@ -12,6 +12,7 @@ import android.widget.LinearLayout
 import android.widget.ListView
 import app.tacit.Graph
 import app.tacit.R
+import app.tacit.core.RefreshSources
 import app.tacit.data.Csv
 import app.tacit.data.Snippet
 
@@ -90,14 +91,14 @@ class SnippetsActivity : Activity() {
                 if (body.text.isNotEmpty()) {
                     Graph.snippets.upsert(Snippet(existing?.id ?: Graph.snippets.newId(), trigger.text.toString().trim(),
                         title.text.toString().trim(), body.text.toString()))
-                    Graph.requestRefresh()
+                    Graph.requestRefresh(RefreshSources.SNIPPETS)
                     reload()
                 }
             }
             .setNegativeButton(R.string.cancel, null)
         if (existing != null) dialog.setNeutralButton(R.string.menu_delete) { _, _ ->
             Graph.snippets.delete(existing.id)
-            Graph.requestRefresh()
+            Graph.requestRefresh(RefreshSources.SNIPPETS)
             reload()
         }
         dialog.show()
@@ -115,7 +116,7 @@ class SnippetsActivity : Activity() {
             } else if (requestCode == 52) {
                 val text = contentResolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) } ?: return
                 Graph.snippets.importRows(Csv.decode(text))
-                Graph.requestRefresh()
+                Graph.requestRefresh(RefreshSources.SNIPPETS)
                 reload()
             }
         }

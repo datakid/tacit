@@ -38,9 +38,11 @@ class ResultAdapter(
 ) : BaseAdapter() {
 
     private var items: List<SearchItem> = emptyList()
-    var selected = 0
+    private var selectedIndex = 0
+    var selected: Int
+        get() = selectedIndex
         set(value) {
-            field = value
+            selectedIndex = value
             notifyDataSetChanged()
         }
     var installedMessengers: Set<ContactAction> = emptySet()
@@ -66,7 +68,13 @@ class ResultAdapter(
 
     fun submit(newItems: List<SearchItem>) {
         items = newItems
-        if (selected >= items.size) selected = 0
+        if (selectedIndex >= items.size) selectedIndex = 0
+        notifyDataSetChanged()
+    }
+
+    fun submit(newItems: List<SearchItem>, newSelected: Int) {
+        items = newItems
+        selectedIndex = newSelected
         notifyDataSetChanged()
     }
 
@@ -74,8 +82,8 @@ class ResultAdapter(
 
     override fun getCount(): Int = items.size
     override fun getItem(position: Int): Any = items[position]
-    override fun getItemId(position: Int): Long = items[position].key.hashCode().toLong()
-    override fun hasStableIds(): Boolean = true
+    override fun getItemId(position: Int): Long = position.toLong()
+    override fun hasStableIds(): Boolean = false
     override fun getViewTypeCount(): Int = 1
     override fun getItemViewType(position: Int): Int = 0
 

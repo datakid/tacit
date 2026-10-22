@@ -34,13 +34,13 @@ import android.window.OnBackInvokedCallback
 import android.window.OnBackInvokedDispatcher
 import app.tacit.Graph
 import app.tacit.R
-import app.tacit.TacitApp
 import app.tacit.Welcome
 import app.tacit.system.BatteryStatus
 import app.tacit.actions.ActionRows
 import app.tacit.actions.Actions
 import app.tacit.clip.ClipLock
 import app.tacit.core.AliasRules
+import app.tacit.core.ChangeGate
 import app.tacit.core.ComposeInput
 import app.tacit.core.DrawerList
 import app.tacit.core.DrawerTab
@@ -52,7 +52,6 @@ import app.tacit.core.Scope
 import app.tacit.core.SearchItem
 import app.tacit.files.FileHit
 import app.tacit.sources.ContactInfo
-import java.io.File
 
 class SearchActivity : Activity(), RowCallbacks {
 
@@ -86,7 +85,14 @@ class SearchActivity : Activity(), RowCallbacks {
     private var strip: LetterStrip? = null
     private var bubble: TextView? = null
     private var welcomeCard: View? = null
-    private val refreshListener: () -> Unit = { if (::input.isInitialized) refreshRows() }
+    private val messengerGate = ChangeGate()
+    private var defaultHome: Boolean? = null
+    private val refreshListener: () -> Unit = {
+        if (::input.isInitialized) {
+            syncMessengers()
+            refreshRows()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         Ui.applyTheme(this)
@@ -443,7 +449,14 @@ class SearchActivity : Activity(), RowCallbacks {
         Welcome.finish(this)
     }
 
+    private fun syncMessengers(): Boolean {
+        if (!messengerGate.changed(Graph.packagesVersion)) return false
+        refreshMessengers()
+        return true
+    }
+
     private fun refreshMessengers() {
+        messengerGate.changed(Graph.packagesVersion)
         val installed = HashSet<ContactAction>()
         if (Actions.isInstalled(this, Actions.WHATSAPP)) installed.add(ContactAction.WHATSAPP)
         if (Actions.isInstalled(this, Actions.WHATSAPP_BUSINESS)) installed.add(ContactAction.WHATSAPP_BUSINESS)
@@ -474,9 +487,10 @@ class SearchActivity : Activity(), RowCallbacks {
     }
 
     private fun isDefaultHome(): Boolean {
+        defaultHome?.let { return it }
         val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
         val resolved = packageManager.resolveActivity(intent, 0)?.activityInfo
-        return resolved?.packageName == packageName
+        return (resolved?.packageName == packageName).also { defaultHome = it }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -489,7 +503,10 @@ class SearchActivity : Activity(), RowCallbacks {
 
     override fun onResume() {
         super.onResume()
+        defaultHome = null
         if (refreshLook()) return
+        if (syncMessengers()) adapter.notifyDataSetChanged()
+        Graph.refreshAliasedFileExistence()
         applyRecentsPreference()
         syncKeyboard()
         if (Graph.prefs.showBattery) {
@@ -522,8 +539,8 @@ class SearchActivity : Activity(), RowCallbacks {
         if (!hasFocus) return
         syncKeyboard()
         if (Graph.prefs.clipboardEnabled) {
-            Graph.worker.post(captureClip)
-            Graph.worker.postDelayed(captureClip, CLIP_RETRY_MS)
+            Graph.clipboard.post(captureClip)
+            Graph.clipboard.postDelayed(captureClip, CLIP_RETRY_MS)
         }
     }
 
@@ -710,7 +727,7 @@ class SearchActivity : Activity(), RowCallbacks {
         if (parsed.scope != Scope.ALL && parsed.scope != Scope.FILES) return emptyList()
         val files = Graph.aliasedFiles()
         if (files.isEmpty()) return emptyList()
-        val present = AliasRules.matching(parsed.text, files).filter { it.key.startsWith("file:content://") || File(it.key.removePrefix("file:")).exists() }
+        val present = AliasRules.matching(parsed.text, files).filter { Graph.aliasedFileExists(it.key) }
         return present.take(3).map { entry ->
             val path = entry.key.removePrefix("file:")
             SearchItem(entry.key, ItemKind.FILE, PathNames.name(path), PathNames.folder(path), payload = path)
@@ -719,7 +736,7 @@ class SearchActivity : Activity(), RowCallbacks {
 
     private fun crashRows(raw: String): List<SearchItem> {
         if (!raw.trim().equals("crash", ignoreCase = true)) return emptyList()
-        if (!File(filesDir, TacitApp.CRASH_FILE).exists()) return emptyList()
+        if (!Graph.crashReportSaved) return emptyList()
         return listOf(SearchItem("crash", ItemKind.ACTION, getString(R.string.share_crash), "", payload = "crash|share"))
     }
 
@@ -730,16 +747,16 @@ class SearchActivity : Activity(), RowCallbacks {
         rows.addAll(if (web != null) baseRows.dropLast(1) else baseRows)
         rows.addAll(fileRows)
         if (web != null) rows.add(web)
-        val display = if (Graph.prefs.barAtBottom) rows.asReversed() else rows
-        adapter.selected = if (Graph.prefs.barAtBottom) (display.size - 1).coerceAtLeast(0) else 0
-        adapter.submit(display)
+        val barBottom = look?.barBottom ?: Graph.prefs.barAtBottom
+        val display = if (barBottom) rows.asReversed() else rows
+        adapter.submit(display, if (barBottom) (display.size - 1).coerceAtLeast(0) else 0)
         if (currentScope == Scope.CLIPBOARD && rows.isEmpty()) {
             emptyHint.text = getString(if (Graph.prefs.clipboardEnabled) R.string.clip_empty else R.string.clip_off)
             emptyHint.visibility = View.VISIBLE
         } else {
             emptyHint.visibility = View.GONE
         }
-        if (Graph.prefs.barAtBottom) list.setSelection(display.size - 1)
+        if (barBottom) list.setSelection(display.size - 1)
     }
 
     private fun fileItem(hit: FileHit): SearchItem =

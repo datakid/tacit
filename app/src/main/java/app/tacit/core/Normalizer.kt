@@ -6,8 +6,15 @@ object Normalizer {
 
     private val combiningMarks = Regex("\\p{Mn}+")
     private val separators = Regex("[^\\p{L}\\p{Nd}]+")
+    private val camelBoundary = Regex("(?<=\\p{Ll})(?=\\p{Lu})")
+
+    private fun isAscii(input: String): Boolean {
+        for (ch in input) if (ch.code >= 0x80) return false
+        return true
+    }
 
     fun normalize(input: String): String {
+        if (isAscii(input)) return input.lowercase()
         val builder = StringBuilder(input.length)
         for (ch in input) {
             when (ch) {
@@ -30,8 +37,7 @@ object Normalizer {
     fun words(normalized: String): List<String> =
         normalized.split(separators).filter { it.isNotEmpty() }
 
-    fun splitCamel(raw: String): String =
-        raw.replace(Regex("(?<=\\p{Ll})(?=\\p{Lu})"), " ")
+    fun splitCamel(raw: String): String = camelBoundary.replace(raw, " ")
 
     fun digitsOnly(input: String): String {
         val normalized = normalize(input)

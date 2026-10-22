@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.Instrumentation
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ShortcutManager
 import android.net.Uri
 import android.widget.ListView
 import androidx.test.core.app.ActivityScenario
@@ -232,6 +233,46 @@ class QuicklinksV2Test {
         assertEquals("qlv2 pin", info.shortLabel.toString())
         assertEquals(QuicklinkRunActivity::class.java.name, info.intent!!.component!!.className)
         assertEquals(link.id, info.intent!!.getStringExtra(QuicklinkRunActivity.EXTRA_ID))
+    }
+
+    private fun shortcutManager(): ShortcutManager = context.getSystemService(ShortcutManager::class.java)
+
+    private fun shortcutLabel(id: String): String? =
+        shortcutManager().dynamicShortcuts.firstOrNull { it.id == "ql-$id" }?.shortLabel?.toString()
+
+    @Test
+    fun renamingAQuicklinkUpdatesItsShortcut() {
+        val link = add(QuicklinkType.URL, "https://example.com", "", "qlv2 before")
+        shortcutManager().addDynamicShortcuts(listOf(PinShortcut.info(context, link)))
+        try {
+            assertEquals("qlv2 before", shortcutLabel(link.id))
+            val intent = Intent(context, QuicklinksActivity::class.java).putExtra(QuicklinksActivity.EXTRA_EDIT, link.id)
+            ActivityScenario.launch<QuicklinksActivity>(intent).use {
+                onView(withHint(R.string.ql_name)).perform(replaceText("qlv2 after"))
+                onView(withText(R.string.save)).perform(click())
+                waitFor { shortcutLabel(link.id) == "qlv2 after" }
+            }
+            assertEquals("qlv2 after", Graph.quicklinks.get(link.id)!!.name)
+        } finally {
+            shortcutManager().removeDynamicShortcuts(listOf("ql-${link.id}"))
+        }
+    }
+
+    @Test
+    fun deletingAQuicklinkDisablesItsShortcut() {
+        val link = add(QuicklinkType.URL, "https://example.com", "", "qlv2 doomed")
+        shortcutManager().addDynamicShortcuts(listOf(PinShortcut.info(context, link)))
+        try {
+            assertEquals("qlv2 doomed", shortcutLabel(link.id))
+            val intent = Intent(context, QuicklinksActivity::class.java).putExtra(QuicklinksActivity.EXTRA_EDIT, link.id)
+            ActivityScenario.launch<QuicklinksActivity>(intent).use {
+                onView(withText(R.string.menu_delete)).perform(click())
+                waitFor { shortcutLabel(link.id) == null }
+            }
+            assertNull(Graph.quicklinks.get(link.id))
+        } finally {
+            shortcutManager().removeDynamicShortcuts(listOf("ql-${link.id}"))
+        }
     }
 
     @Test

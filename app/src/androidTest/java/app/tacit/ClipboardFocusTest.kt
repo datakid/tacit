@@ -18,6 +18,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 @RunWith(AndroidJUnit4::class)
 class ClipboardFocusTest {
@@ -52,9 +54,30 @@ class ClipboardFocusTest {
         return condition()
     }
 
+    private fun marker() = "clipboard test note " + (1..8).map { ('a'..'z').random() }.joinToString("")
+
+    @Test
+    fun clipIsSavedWhileTheWorkerIsBusy() {
+        val release = CountDownLatch(1)
+        val started = CountDownLatch(1)
+        Graph.worker.post {
+            started.countDown()
+            release.await(30, TimeUnit.SECONDS)
+        }
+        try {
+            assertTrue("the worker was not blocked", started.await(5, TimeUnit.SECONDS))
+            copyAwayAndReturn(marker())
+        } finally {
+            release.countDown()
+        }
+    }
+
     @Test
     fun clipCopiedWhileAwayIsSavedWhenTacitOpens() {
-        val marker = "clipboard test note " + (1..8).map { ('a'..'z').random() }.joinToString("")
+        copyAwayAndReturn(marker())
+    }
+
+    private fun copyAwayAndReturn(marker: String) {
         ActivityScenario.launch(SearchActivity::class.java).use {
             instrumentation.waitForIdleSync()
             instrumentation.runOnMainSync {

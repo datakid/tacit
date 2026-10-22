@@ -22,6 +22,7 @@ class IconCache(private val context: Context, private val prefs: Prefs) {
     private val memory = object : LruCache<String, Bitmap>(12 * 1024 * 1024) {
         override fun sizeOf(key: String, value: Bitmap): Int = value.byteCount
     }
+    private val packageOfKey = HashMap<String, String>()
     private var seenMode = ""
     private var seenDark = false
     private var seenDensity = ""
@@ -44,7 +45,10 @@ class IconCache(private val context: Context, private val prefs: Prefs) {
             val bitmap = runCatching { render(payload, foreground, size) }.getOrNull()
             Graph.main.post {
                 if (born == generation) {
-                    if (bitmap != null) memory.put(key, bitmap)
+                    if (bitmap != null) {
+                        memory.put(key, bitmap)
+                        packageOfKey[key] = Graph.apps.packageOf(payload)
+                    }
                     done(bitmap)
                 }
             }
@@ -54,6 +58,18 @@ class IconCache(private val context: Context, private val prefs: Prefs) {
     fun clear() {
         generation++
         memory.evictAll()
+        packageOfKey.clear()
+    }
+
+    fun evictPackage(packageName: String) {
+        val entries = packageOfKey.entries.iterator()
+        while (entries.hasNext()) {
+            val entry = entries.next()
+            if (entry.value == packageName) {
+                memory.remove(entry.key)
+                entries.remove()
+            }
+        }
     }
 
     private fun sync() {
