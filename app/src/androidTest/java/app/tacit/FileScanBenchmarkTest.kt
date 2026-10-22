@@ -3,6 +3,7 @@ package app.tacit
 import android.os.Environment
 import android.os.ParcelFileDescriptor
 import android.media.MediaScannerConnection
+import android.provider.MediaStore
 import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -43,8 +44,9 @@ class FileScanBenchmarkTest {
 
     @After
     fun tearDown() {
-        bench.deleteRecursively()
+        val cleaned = time { bench.deleteRecursively() }
         shell("appops set ${context.packageName} MANAGE_EXTERNAL_STORAGE default")
+        report("cleaned ms=$cleaned")
     }
 
     private fun shell(command: String) {
@@ -66,7 +68,6 @@ class FileScanBenchmarkTest {
 
     private fun report(message: String) {
         Log.i("TACIT_FILESCAN", message)
-        println("TACIT_FILESCAN $message")
     }
 
     private fun write(directory: File, name: String) {
@@ -158,7 +159,32 @@ class FileScanBenchmarkTest {
         summarize("file_not_in_nio", file - nio)
         summarize("nio_not_in_file", nio - file)
 
+        report("rows ${describeRows()}")
         assertEquals("the NIO walker must find exactly what the File walker finds", file, nio)
+        report("finished")
+    }
+
+    private fun describeRows(): String {
+        val projection = arrayOf(
+            MediaStore.MediaColumns.RELATIVE_PATH,
+            MediaStore.MediaColumns.DISPLAY_NAME,
+            MediaStore.MediaColumns.MIME_TYPE,
+            MediaStore.Files.FileColumns.MEDIA_TYPE,
+            MediaStore.MediaColumns.SIZE
+        )
+        val names = arrayOf("d0", "NoMedia", "report-0-0-0.txt", "fresh-0.txt", ".nomedia")
+        val rows = ArrayList<String>()
+        for (name in names) {
+            context.contentResolver.query(
+                MediaStore.Files.getContentUri("external_primary"), projection,
+                MediaStore.MediaColumns.DISPLAY_NAME + " = ?", arrayOf(name), null
+            )?.use {
+                while (it.moveToNext() && rows.size < 8) {
+                    rows.add("${it.getString(0)}|${it.getString(1)}|mime=${it.getString(2)}|type=${it.getString(3)}|size=${it.getString(4)}")
+                }
+            }
+        }
+        return rows.joinToString(" ; ")
     }
 
     private companion object {

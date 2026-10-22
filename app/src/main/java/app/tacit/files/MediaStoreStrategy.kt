@@ -35,10 +35,13 @@ class MediaStoreStrategy(private val context: Context, private val includeHidden
             MediaStore.MediaColumns.RELATIVE_PATH,
             MediaStore.MediaColumns.DISPLAY_NAME,
             MediaStore.MediaColumns.SIZE,
-            MediaStore.MediaColumns.DATE_MODIFIED
+            MediaStore.MediaColumns.DATE_MODIFIED,
+            MediaStore.MediaColumns.MIME_TYPE
         )
         val cursor = runCatching {
-            context.contentResolver.query(MediaStore.Files.getContentUri(volume), projection, null, null, null)
+            context.contentResolver.query(
+                MediaStore.Files.getContentUri(volume), projection, null, null, MediaStore.MediaColumns.RELATIVE_PATH + " ASC"
+            )
         }.getOrNull() ?: return
         val folders = HashMap<String, Int>()
         folders[""] = sink.directory(root)
@@ -51,11 +54,18 @@ class MediaStoreStrategy(private val context: Context, private val includeHidden
                 val relative = (it.getString(0) ?: "").removeSuffix("/")
                 val name = it.getString(1) ?: continue
                 if (!includeHidden && (name.startsWith('.') || hasHiddenSegment(relative))) continue
+                val modified = if (it.isNull(3)) 0L else it.getLong(3) * 1000L
+                if (it.isNull(4)) {
+                    val path = if (relative.isEmpty()) name else "$relative/$name"
+                    if (isRestricted(path)) continue
+                    folderIndex(path, modified, root, folders, sink)
+                    if (stopped) return
+                    continue
+                }
                 if (isRestricted(relative)) continue
-                val parent = folderIndex(relative, root, folders, sink)
+                val parent = folderIndex(relative, 0L, root, folders, sink)
                 if (stopped) return
                 val size = if (it.isNull(2)) 0L else it.getLong(2)
-                val modified = if (it.isNull(3)) 0L else it.getLong(3) * 1000L
                 if (!sink.add(name, parent, size, modified)) {
                     stopped = true
                     return
@@ -64,15 +74,15 @@ class MediaStoreStrategy(private val context: Context, private val includeHidden
         }
     }
 
-    private fun folderIndex(relative: String, root: String, folders: HashMap<String, Int>, sink: EntrySink): Int {
+    private fun folderIndex(relative: String, modified: Long, root: String, folders: HashMap<String, Int>, sink: EntrySink): Int {
         folders[relative]?.let { return it }
         val cut = relative.lastIndexOf('/')
         val parentRelative = if (cut < 0) "" else relative.substring(0, cut)
-        val parentIndex = folderIndex(parentRelative, root, folders, sink)
+        val parentIndex = folderIndex(parentRelative, 0L, root, folders, sink)
         if (stopped) return parentIndex
         val index = sink.directory("$root/$relative")
         folders[relative] = index
-        if (!sink.add(relative.substring(cut + 1) + "/", parentIndex, 0L, 0L)) stopped = true
+        if (!sink.add(relative.substring(cut + 1) + "/", parentIndex, 0L, modified)) stopped = true
         return index
     }
 

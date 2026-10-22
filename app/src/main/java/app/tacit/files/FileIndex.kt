@@ -312,6 +312,6 @@ class FileIndex(
         private const val BUFFER = 1 shl 17
         private const val PROGRESS_MS = 250L
         private const val PARTIAL_ENTRIES = 25_000
-        private const val MEDIA_STORE_DEFAULT = false
+        private const val MEDIA_STORE_DEFAULT = true
     }
 }
