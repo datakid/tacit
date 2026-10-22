@@ -108,14 +108,15 @@ class FileIndexMigrationTest {
 
         assertFalse(loaded.legacy)
         assertSameTable(table, loaded.table)
-        assertEquals(table.count, loaded.header!!.entryCount)
-        assertEquals(header.createdAt, loaded.header!!.createdAt)
-        assertEquals(header.verifiedAt, loaded.header!!.verifiedAt)
-        assertEquals(ScanStrategyIds.HYBRID, loaded.header!!.strategy)
-        assertTrue(loaded.header!!.truncated)
-        assertEquals(listOf("external_primary", "1A2B-3C4D"), loaded.header!!.volumes.map { it.name })
-        assertEquals(listOf(4242L, 7L), loaded.header!!.volumes.map { it.generation })
-        assertEquals(listOf("Android-37.0", "Android-37.0"), loaded.header!!.volumes.map { it.version })
+        val read = loaded.header!!
+        assertEquals(table.count, read.entryCount)
+        assertEquals(header.createdAt, read.createdAt)
+        assertEquals(header.verifiedAt, read.verifiedAt)
+        assertEquals(ScanStrategyIds.HYBRID, read.strategy)
+        assertTrue(read.truncated)
+        assertEquals(listOf("external_primary", "1A2B-3C4D"), read.volumes.map { it.name })
+        assertEquals(listOf(4242L, 7L), read.volumes.map { it.generation })
+        assertEquals(listOf("Android-37.0", "Android-37.0"), read.volumes.map { it.version })
     }
 
     @Test

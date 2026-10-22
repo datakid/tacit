@@ -2,7 +2,7 @@ package app.tacit
 
 import android.os.Environment
 import android.os.ParcelFileDescriptor
-import android.provider.MediaStore
+import android.media.MediaScannerConnection
 import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -19,6 +19,8 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 @RunWith(AndroidJUnit4::class)
 class FileScanBenchmarkTest {
@@ -35,7 +37,7 @@ class FileScanBenchmarkTest {
         assertTrue("All files access was not granted", Environment.isExternalStorageManager())
         bench.deleteRecursively()
         val seeded = time { seed() }
-        val scanned = time { MediaStore.scanFile(context.contentResolver, bench) }
+        val scanned = time { scanMediaStore() }
         report("seed files=${TOP * SUBS * PER_SUB + NO_MEDIA + HIDDEN} folders=${TOP * SUBS} seed_ms=$seeded mediastore_scan_ms=$scanned")
     }
 
@@ -48,6 +50,12 @@ class FileScanBenchmarkTest {
     private fun shell(command: String) {
         val descriptor = instrumentation.uiAutomation.executeShellCommand(command)
         ParcelFileDescriptor.AutoCloseInputStream(descriptor).use { it.readBytes() }
+    }
+
+    private fun scanMediaStore() {
+        val done = CountDownLatch(1)
+        MediaScannerConnection.scanFile(context, arrayOf(bench.absolutePath), null) { _, _ -> done.countDown() }
+        assertTrue("MediaStore did not finish scanning the benchmark tree", done.await(SCAN_WAIT_SECONDS, TimeUnit.SECONDS))
     }
 
     private fun time(block: () -> Unit): Long {
@@ -161,5 +169,6 @@ class FileScanBenchmarkTest {
         const val HIDDEN = 100
         const val FRESH = 50
         const val ROUNDS = 3
+        const val SCAN_WAIT_SECONDS = 150L
     }
 }

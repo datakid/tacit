@@ -35,7 +35,7 @@ class FileWalkStrategyTest {
 
     private fun write(path: String, size: Int) {
         val file = File(root, path)
-        file.parentFile.mkdirs()
+        file.parentFile!!.mkdirs()
         file.writeBytes(ByteArray(size))
     }
 
