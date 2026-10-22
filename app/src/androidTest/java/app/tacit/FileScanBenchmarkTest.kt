@@ -1,0 +1,165 @@
+package app.tacit
+
+import android.os.Environment
+import android.os.ParcelFileDescriptor
+import android.provider.MediaStore
+import android.util.Log
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import app.tacit.files.FileTable
+import app.tacit.files.FileWalkStrategy
+import app.tacit.files.MediaStoreStrategy
+import app.tacit.files.NioWalkStrategy
+import app.tacit.files.ScanStrategy
+import app.tacit.files.TableBuilder
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+import org.junit.runner.RunWith
+import java.io.File
+
+@RunWith(AndroidJUnit4::class)
+class FileScanBenchmarkTest {
+
+    private val instrumentation = InstrumentationRegistry.getInstrumentation()
+    private val context = instrumentation.targetContext
+    private val storage = Environment.getExternalStorageDirectory()
+    private val bench = File(storage, "TacitBench")
+    private val prefix = bench.absolutePath + "/"
+
+    @Before
+    fun setUp() {
+        shell("appops set ${context.packageName} MANAGE_EXTERNAL_STORAGE allow")
+        assertTrue("All files access was not granted", Environment.isExternalStorageManager())
+        bench.deleteRecursively()
+        val seeded = time { seed() }
+        val scanned = time { MediaStore.scanFile(context.contentResolver, bench) }
+        report("seed files=${TOP * SUBS * PER_SUB + NO_MEDIA + HIDDEN} folders=${TOP * SUBS} seed_ms=$seeded mediastore_scan_ms=$scanned")
+    }
+
+    @After
+    fun tearDown() {
+        bench.deleteRecursively()
+        shell("appops set ${context.packageName} MANAGE_EXTERNAL_STORAGE default")
+    }
+
+    private fun shell(command: String) {
+        val descriptor = instrumentation.uiAutomation.executeShellCommand(command)
+        ParcelFileDescriptor.AutoCloseInputStream(descriptor).use { it.readBytes() }
+    }
+
+    private fun time(block: () -> Unit): Long {
+        val start = System.nanoTime()
+        block()
+        return (System.nanoTime() - start) / 1_000_000
+    }
+
+    private fun report(message: String) {
+        Log.i("TACIT_FILESCAN", message)
+        println("TACIT_FILESCAN $message")
+    }
+
+    private fun write(directory: File, name: String) {
+        File(directory, name).writeBytes(byteArrayOf(1))
+    }
+
+    private fun seed() {
+        (0 until TOP).toList().parallelStream().forEach { top ->
+            for (sub in 0 until SUBS) {
+                val directory = File(bench, "d$top/s$sub")
+                directory.mkdirs()
+                for (n in 0 until PER_SUB) write(directory, "report-$top-$sub-$n.txt")
+            }
+        }
+        val noMedia = File(bench, "NoMedia")
+        noMedia.mkdirs()
+        write(noMedia, ".nomedia")
+        for (n in 0 until NO_MEDIA) write(noMedia, "nm-$n.txt")
+        val hidden = File(bench, ".cache")
+        hidden.mkdirs()
+        for (n in 0 until HIDDEN) write(hidden, "hidden-$n.txt")
+    }
+
+    private fun createFresh() {
+        val fresh = File(bench, "Fresh")
+        fresh.mkdirs()
+        for (n in 0 until FRESH) write(fresh, "fresh-$n.txt")
+    }
+
+    private fun run(strategy: ScanStrategy): Pair<Long, FileTable> {
+        val builder = TableBuilder()
+        val start = System.nanoTime()
+        strategy.scan(builder)
+        val table = builder.snapshot()
+        return (System.nanoTime() - start) / 1_000_000 to table
+    }
+
+    private fun benchPaths(table: FileTable): Set<String> {
+        val paths = HashSet<String>()
+        for (i in 0 until table.count) {
+            val path = table.pathOf(i)
+            if (path.startsWith(prefix)) paths.add(path)
+        }
+        return paths
+    }
+
+    private fun category(path: String): String = when {
+        path.contains("/NoMedia/") -> "nomedia"
+        path.contains("/Fresh/") -> "fresh"
+        path.endsWith("/") -> "folders"
+        else -> "other"
+    }
+
+    private fun summarize(label: String, missing: Set<String>) {
+        val counts = missing.groupingBy { category(it) }.eachCount().toSortedMap()
+        report("diff $label count=${missing.size} categories=$counts sample=${missing.sorted().take(3)}")
+    }
+
+    @Test
+    fun theWalkersAgreeAndMediaStoreIsMeasuredAgainstThem() {
+        createFresh()
+        val immediate = run(MediaStoreStrategy(context, false)).second
+        val freshSeen = benchPaths(immediate).count { it.contains("/Fresh/") && !it.endsWith("/") }
+        report("fresh created=$FRESH seen_by_mediastore_immediately=$freshSeen")
+
+        val roots = listOf(storage)
+        val timings = HashMap<String, ArrayList<Long>>()
+        val tables = HashMap<String, FileTable>()
+        repeat(ROUNDS) {
+            for ((name, strategy) in listOf<Pair<String, ScanStrategy>>(
+                "file" to FileWalkStrategy(roots, false),
+                "nio" to NioWalkStrategy(roots, false),
+                "mediastore" to MediaStoreStrategy(context, false)
+            )) {
+                val (millis, table) = run(strategy)
+                timings.getOrPut(name) { ArrayList() }.add(millis)
+                tables[name] = table
+            }
+        }
+        for ((name, values) in timings) {
+            report("strategy=$name ms=${values.joinToString(",")} best=${values.min()} entries=${tables.getValue(name).count} bench=${benchPaths(tables.getValue(name)).size}")
+        }
+
+        val file = benchPaths(tables.getValue("file"))
+        val nio = benchPaths(tables.getValue("nio"))
+        val media = benchPaths(tables.getValue("mediastore"))
+        summarize("nio_not_in_mediastore", nio - media)
+        summarize("mediastore_not_in_nio", media - nio)
+        summarize("file_not_in_nio", file - nio)
+        summarize("nio_not_in_file", nio - file)
+
+        assertEquals("the NIO walker must find exactly what the File walker finds", file, nio)
+    }
+
+    private companion object {
+        const val TOP = 30
+        const val SUBS = 100
+        const val PER_SUB = 10
+        const val NO_MEDIA = 200
+        const val HIDDEN = 100
+        const val FRESH = 50
+        const val ROUNDS = 3
+    }
+}

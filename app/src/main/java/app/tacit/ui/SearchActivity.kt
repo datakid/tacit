@@ -12,6 +12,7 @@ import android.graphics.Rect
 import android.graphics.Typeface
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import android.text.Editable
 import android.text.InputType
 import android.text.TextWatcher
@@ -51,7 +52,9 @@ import app.tacit.core.ResultComposer
 import app.tacit.core.Scope
 import app.tacit.core.SearchItem
 import app.tacit.files.FileHit
+import app.tacit.files.ScanState
 import app.tacit.sources.ContactInfo
+import java.text.NumberFormat
 
 class SearchActivity : Activity(), RowCallbacks {
 
@@ -65,6 +68,12 @@ class SearchActivity : Activity(), RowCallbacks {
     private val clipLock by lazy { ClipLock(this, Graph.prefs) { runQuery(input.text.toString()) } }
     private var baseRows: List<SearchItem> = emptyList()
     private var fileRows: List<SearchItem> = emptyList()
+    private var fileSearch: FileSearch? = null
+    private var fileSearchDone = false
+    private var lastProgressSearch = 0L
+    private var statusShown = false
+    private var filesListening = false
+    private val fileStateListener: (ScanState) -> Unit = { onFilesState(it) }
     private var aliasedKeys: Set<String> = emptySet()
     private lateinit var batteryText: TextView
     private var batteryRegistered = false
@@ -507,6 +516,7 @@ class SearchActivity : Activity(), RowCallbacks {
         if (refreshLook()) return
         if (syncMessengers()) adapter.notifyDataSetChanged()
         Graph.refreshAliasedFileExistence()
+        watchFiles()
         applyRecentsPreference()
         syncKeyboard()
         if (Graph.prefs.showBattery) {
@@ -519,6 +529,10 @@ class SearchActivity : Activity(), RowCallbacks {
     }
 
     override fun onPause() {
+        if (filesListening) {
+            Graph.files.removeStateListener(fileStateListener)
+            filesListening = false
+        }
         if (batteryRegistered) {
             unregisterReceiver(batteryReceiver)
             batteryRegistered = false
@@ -704,23 +718,62 @@ class SearchActivity : Activity(), RowCallbacks {
             else -> crashRows(raw) + aliased + output.rows
         }
         fileRows = emptyList()
+        fileSearchDone = false
+        val search = if (output.wantsFiles && Graph.prefs.filesEnabled) FileSearch(output.parsed.text, limit, raw) else null
+        fileSearch = search
         if (sensitiveView) window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         else window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
         publish()
         if (sensitiveView && clipLock.isLocked()) clipLock.requestUnlock()
-        if (output.wantsFiles && Graph.prefs.filesEnabled) {
-            val queryAtStart = raw
-            Graph.files.search(output.parsed.text, limit) { hits ->
-                Graph.main.post {
-                    if (currentQuery == queryAtStart) {
-                        fileRows = hits.map(::fileItem).filter { it.key !in aliasedKeys }
-                        publish()
-                    }
+        if (search != null) searchFiles(search) else Graph.files.cancel()
+    }
+
+    private fun searchFiles(search: FileSearch) {
+        Graph.files.search(search.text, search.limit) { hits ->
+            Graph.main.post {
+                if (currentQuery == search.raw) {
+                    fileRows = hits.map(::fileItem).filter { it.key !in aliasedKeys }
+                    fileSearchDone = true
+                    publish()
                 }
             }
-        } else {
-            Graph.files.cancel()
         }
+    }
+
+    private fun watchFiles() {
+        if (!Graph.prefs.filesEnabled) return
+        Graph.files.addStateListener(fileStateListener)
+        filesListening = true
+        Graph.files.preload()
+        Graph.files.maybeRefresh()
+    }
+
+    private fun onFilesState(state: ScanState) {
+        val search = fileSearch ?: return
+        if (state is ScanState.Done) {
+            searchFiles(search)
+        } else if (state is ScanState.Scanning && (!fileSearchDone || fileRows.isEmpty())) {
+            val now = SystemClock.uptimeMillis()
+            if (now - lastProgressSearch >= PROGRESS_SEARCH_MS) {
+                lastProgressSearch = now
+                searchFiles(search)
+            }
+        }
+        if (statusShown || filesStatusRow() != null) publish()
+    }
+
+    private fun filesStatusRow(): SearchItem? {
+        if (fileSearch == null || !Graph.prefs.filesEnabled) return null
+        val state = Graph.files.state
+        if (state is ScanState.Scanning) {
+            if (currentScope != Scope.FILES && (!fileSearchDone || fileRows.isNotEmpty())) return null
+            val found = NumberFormat.getIntegerInstance().format(state.found)
+            return SearchItem(FILES_STATUS_KEY, ItemKind.ACTION, getString(R.string.files_indexing, found), "", payload = SETTINGS_PAYLOAD)
+        }
+        if (currentScope == Scope.FILES && state === ScanState.Idle && !Graph.files.hasTable() && !Graph.files.hasAccess()) {
+            return SearchItem(FILES_STATUS_KEY, ItemKind.ACTION, getString(R.string.files_not_indexed), "", payload = SETTINGS_PAYLOAD)
+        }
+        return null
     }
 
     private fun aliasedFileRows(parsed: ParsedQuery): List<SearchItem> {
@@ -746,6 +799,9 @@ class SearchActivity : Activity(), RowCallbacks {
         val web = baseRows.lastOrNull()?.takeIf { it.kind == ItemKind.WEB }
         rows.addAll(if (web != null) baseRows.dropLast(1) else baseRows)
         rows.addAll(fileRows)
+        val status = filesStatusRow()
+        statusShown = status != null
+        if (status != null) rows.add(status)
         if (web != null) rows.add(web)
         val barBottom = look?.barBottom ?: Graph.prefs.barAtBottom
         val display = if (barBottom) rows.asReversed() else rows
@@ -855,7 +911,12 @@ class SearchActivity : Activity(), RowCallbacks {
         if (ok && Graph.prefs.closeAfterAction) input.setText("")
     }
 
+    private class FileSearch(val text: String, val limit: Int, val raw: String)
+
     private companion object {
         const val CLIP_RETRY_MS = 600L
+        const val PROGRESS_SEARCH_MS = 500L
+        const val FILES_STATUS_KEY = "files:status"
+        const val SETTINGS_PAYLOAD = "tacit|app.tacit.ui.SettingsActivity"
     }
 }

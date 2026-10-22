@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.provider.DocumentsContract
-import app.tacit.core.Normalizer
 
 object GrantedTrees {
 
@@ -72,12 +71,12 @@ class TreeScanner(
                     val isDir = it.getString(2) == DocumentsContract.Document.MIME_TYPE_DIR
                     val size = if (it.isNull(3)) 0L else it.getLong(3)
                     val modified = if (it.isNull(4)) 0L else it.getLong(4)
+                    val childUri = DocumentsContract.buildDocumentUriUsingTree(tree, childId).toString()
                     if (isDir) {
                         stack.addLast(childId)
-                        if (!sink("$name/", parentKey, 0L, modified)) return
+                        if (!sink(TreeNames.stored("$name/", childUri), parentKey, 0L, modified)) return
                     } else {
-                        val childUri = DocumentsContract.buildDocumentUriUsingTree(tree, childId)
-                        if (!sink(name + TREE_SEPARATOR + childUri.toString(), parentKey, size, modified)) return
+                        if (!sink(TreeNames.stored(name, childUri), parentKey, size, modified)) return
                     }
                 }
             }
@@ -85,16 +84,36 @@ class TreeScanner(
     }
 
     companion object {
-        const val TREE_PREFIX = "tree:"
-        const val TREE_SEPARATOR = "\u0000"
+        const val TREE_PREFIX = TreeNames.PREFIX
+        const val TREE_SEPARATOR = TreeNames.SEPARATOR
 
-        fun displayName(stored: String): String = stored.substringBefore(TREE_SEPARATOR)
+        fun displayName(stored: String): String = TreeNames.displayName(stored)
 
-        fun documentUriString(stored: String): String? =
-            if (stored.contains(TREE_SEPARATOR)) stored.substringAfter(TREE_SEPARATOR) else null
+        fun documentUriString(stored: String): String? = TreeNames.documentUriString(stored)
 
         fun documentUri(stored: String): Uri? = documentUriString(stored)?.let { Uri.parse(it) }
 
-        fun normalizedName(stored: String): String = Normalizer.normalize(displayName(stored))
+        fun normalizedName(stored: String): String = TreeNames.normalizedName(stored)
+    }
+}
+
+class TreeStrategy(
+    private val resolver: ContentResolver,
+    private val trees: List<Uri>,
+    private val includeHidden: Boolean
+) : ScanStrategy {
+
+    override val id: Int = ScanStrategyIds.TREE
+
+    override fun scan(sink: EntrySink) {
+        for (tree in trees) {
+            if (!sink.accepting) return
+            var more = true
+            TreeScanner(resolver, includeHidden) { name, parentKey, size, modified ->
+                more = sink.add(name, sink.directory(parentKey), size, modified)
+                more
+            }.scan(tree)
+            if (!more) return
+        }
     }
 }

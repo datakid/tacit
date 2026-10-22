@@ -166,8 +166,15 @@ object Actions {
         val uri = contentUri(activity, path)
         val mime = if (path.startsWith("content://")) activity.contentResolver.getType(uri) ?: mimeOf(nameOf(activity, path))
         else mimeOf(File(path).name)
+        if (mime == DocumentsContract.Document.MIME_TYPE_DIR) return openDirectory(activity, uri)
         val intent = Intent(Intent.ACTION_VIEW).setDataAndType(uri, mime).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         return start(activity, Intent.createChooser(intent, null).takeIf { activity.packageManager.resolveActivity(intent, 0) == null } ?: intent)
+    }
+
+    private fun openDirectory(activity: Activity, documentUri: Uri): Boolean {
+        val intent = Intent(Intent.ACTION_VIEW).setDataAndType(documentUri, DocumentsContract.Document.MIME_TYPE_DIR)
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        return start(activity, intent)
     }
 
     fun shareFile(activity: Activity, path: String): Boolean {
@@ -183,10 +190,7 @@ object Actions {
             val parentId = runCatching { DocumentsContract.getDocumentId(documentUri).substringBeforeLast('/') }.getOrNull()
             val treeUri = runCatching { DocumentsContract.getTreeDocumentId(documentUri) }.getOrNull()
             if (parentId != null && treeUri != null) {
-                val parent = DocumentsContract.buildDocumentUriUsingTree(documentUri, parentId)
-                val intent = Intent(Intent.ACTION_VIEW).setDataAndType(parent, DocumentsContract.Document.MIME_TYPE_DIR)
-                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                if (start(activity, intent)) return true
+                return openDirectory(activity, DocumentsContract.buildDocumentUriUsingTree(documentUri, parentId))
             }
             return false
         }

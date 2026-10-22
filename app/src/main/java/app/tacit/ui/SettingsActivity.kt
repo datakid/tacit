@@ -9,6 +9,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Build
 import android.provider.Settings
+import android.text.format.DateUtils
 import android.view.View
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -27,14 +28,21 @@ import app.tacit.core.HiddenLabels
 import app.tacit.core.RefreshSources
 import app.tacit.core.RowDensity
 import app.tacit.files.GrantedTrees
+import app.tacit.files.ScanState
 import app.tacit.files.StorageAccess
+import app.tacit.files.TableBuilder
 import java.io.File
+import java.text.NumberFormat
 
 class SettingsActivity : Activity() {
 
     private lateinit var palette: Palette
     private lateinit var container: LinearLayout
     private val prefs get() = Graph.prefs
+    private var rescanRow: LinearLayout? = null
+    private var resumed = false
+    private var filesListening = false
+    private val fileStateListener: (ScanState) -> Unit = { showFilesState(it) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         Ui.applyTheme(this)
@@ -50,7 +58,18 @@ class SettingsActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        resumed = true
         build()
+        if (prefs.filesEnabled) Graph.files.maybeRefresh()
+    }
+
+    override fun onPause() {
+        resumed = false
+        if (filesListening) {
+            Graph.files.removeStateListener(fileStateListener)
+            filesListening = false
+        }
+        super.onPause()
     }
 
     private fun build() {
@@ -82,7 +101,14 @@ class SettingsActivity : Activity() {
         if (prefs.filesEnabled) {
             fileSourceRows()
             toggle(R.string.files_hidden, prefs.filesHidden) { prefs.filesHidden = it; Graph.files.rescan() }
-            action(getString(R.string.rescan_files, Graph.files.count())) { Graph.files.rescan { Graph.main.post { build() } } }
+            rescanRow = rescanRowFor(Graph.files.state)
+            if (resumed && !filesListening) {
+                Graph.files.addStateListener(fileStateListener)
+                filesListening = true
+                Graph.files.summarize()
+            }
+        } else {
+            rescanRow = null
         }
         toggle(R.string.clipboard, prefs.clipboardEnabled) { enabled ->
             prefs.clipboardEnabled = enabled
@@ -189,6 +215,42 @@ class SettingsActivity : Activity() {
         Graph.requestRefresh()
     }
 
+    private fun rescanRowFor(state: ScanState): LinearLayout {
+        val number = NumberFormat.getIntegerInstance()
+        if (state is ScanState.Scanning) {
+            return rowView(getString(R.string.files_indexing, number.format(state.found)), null).apply {
+                isEnabled = false
+                isClickable = false
+                alpha = 0.6f
+            }
+        }
+        val details = ArrayList<String>(2)
+        if (state is ScanState.Done) {
+            details.add(getString(R.string.files_indexed_at, DateUtils.getRelativeTimeSpanString(state.at)))
+            if (state.truncated) details.add(getString(R.string.files_limit_reached, number.format(TableBuilder.MAX_FILES)))
+        }
+        val row = rowView(getString(R.string.rescan_files, Graph.files.count()), details.joinToString("\n").ifEmpty { null })
+        if (Graph.files.busy) {
+            row.isEnabled = false
+            row.isClickable = false
+            row.alpha = 0.6f
+        } else {
+            row.setOnClickListener { Graph.files.rescan() }
+        }
+        return row
+    }
+
+    private fun showFilesState(state: ScanState) {
+        val old = rescanRow ?: return
+        val index = container.indexOfChild(old)
+        if (index < 0) return
+        val replacement = rescanRowFor(state)
+        container.removeView(replacement)
+        container.removeViewAt(index)
+        container.addView(replacement, index, Ui.matchWrap())
+        rescanRow = replacement
+    }
+
     private fun setFiles(enabled: Boolean) {
         if (!enabled) {
             prefs.filesEnabled = false
@@ -217,7 +279,7 @@ class SettingsActivity : Activity() {
             return
         }
         prefs.filesEnabled = true
-        Graph.files.rescan { Graph.main.post { build() } }
+        Graph.files.rescan()
         build()
     }
 
@@ -242,7 +304,7 @@ class SettingsActivity : Activity() {
                         .setMessage(getString(R.string.files_folder_remove, GrantedTrees.label(tree)))
                         .setPositiveButton(R.string.menu_delete) { _, _ ->
                             GrantedTrees.remove(this, tree)
-                            Graph.files.rescan { Graph.main.post { build() } }
+                            Graph.files.rescan()
                             build()
                         }
                         .setNegativeButton(R.string.cancel, null)
@@ -265,7 +327,7 @@ class SettingsActivity : Activity() {
             REQ_CALL -> if (!granted) prefs.directCall = false
             REQ_FILES -> if (granted) {
                 prefs.filesEnabled = true
-                Graph.files.rescan { Graph.main.post { build() } }
+                Graph.files.rescan()
             }
         }
         build()
@@ -280,7 +342,7 @@ class SettingsActivity : Activity() {
             if (requestCode == REQ_TREE) {
                 GrantedTrees.add(this, uri)
                 prefs.filesEnabled = true
-                Graph.files.rescan { Graph.main.post { build() } }
+                Graph.files.rescan()
                 build()
             } else if (requestCode == REQ_EXPORT) {
                 writeBackup(uri)

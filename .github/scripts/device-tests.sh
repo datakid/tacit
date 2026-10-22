@@ -73,6 +73,8 @@ strictmode_report > strictmode-raw.txt
 } > strictmode.txt
 {
   echo "exit status: $status"
+  grep -h "TACIT_FILESCAN" logcat.txt | sed -E 's/^.*TACIT_FILESCAN: //' | head -c 1800
+  echo
   echo "--- strictmode"
   head -c 1000 strictmode.txt
   echo "--- timeout diagnostics"

@@ -4,6 +4,7 @@ These come from Android itself. Tacit doesn't work around them with root, hacks 
 
 - **Settings**: Tacit finds Settings *screens*. It can't find individual toggles inside them; that search index needs system privileges. Vendor skins (Samsung, Xiaomi) expose fewer screens.
 - **Files**: Android/data, Android/obb, other apps' private storage and cloud-only files can't be searched without root. Full search needs "All files access". Without it you can grant individual folders, but Android won't let you grant the storage root or the Download root that way.
+- **Files, chosen folders**: scanning is slower than with All files access, because Android answers one query per folder.
 - **Clipboard lock**: only available when the phone has a screen lock set.
 - **Clipboard**: Android 10+ only lets the app on screen read the clipboard. Tacit saves what's on the clipboard each time you open it; copies made in between are missed.
 - **Updates**: installing, updating or removing an app reaches Tacit as a burst of events. Tacit waits 400 ms, reloads once, and reloads only what changed. The new app can take about half a second to show up.

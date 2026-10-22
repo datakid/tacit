@@ -7,9 +7,12 @@ import android.os.Build
 import android.os.Environment
 import android.os.Handler
 import android.os.HandlerThread
+import android.os.Looper
+import android.os.Process
+import android.os.SystemClock
 import android.os.storage.StorageManager
+import android.provider.MediaStore
 import app.tacit.Prefs
-import app.tacit.core.Normalizer
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.DataInputStream
@@ -21,63 +24,34 @@ object StorageAccess {
     fun hasAllFiles(): Boolean = Build.VERSION.SDK_INT >= 30 && Environment.isExternalStorageManager()
 }
 
-class FileHit(val path: String, val name: String, val size: Long, val modified: Long, val score: Int, val folder: String = "")
-
-object PathDecoder {
-    fun decode(value: String): String = runCatching { java.net.URLDecoder.decode(value.replace("+", "%2B"), "UTF-8") }.getOrDefault(value)
-}
-
-class FileTable(
-    val directories: Array<String>,
-    val names: Array<String>,
-    val normalized: Array<String>,
-    val parent: IntArray,
-    val sizes: LongArray,
-    val modified: LongArray
+class FileIndex(
+    private val context: Context,
+    private val prefs: Prefs,
+    private val onFailure: (Throwable) -> Unit = {}
 ) {
-    val count: Int get() = names.size
-
-    val searchableDirectories: Array<String> by lazy {
-        Array(directories.size) { index ->
-            val dir = directories[index]
-            (if (dir.contains('%')) PathDecoder.decode(dir) else dir).lowercase()
-        }
-    }
-
-    fun pathOf(index: Int): String {
-        val name = names[index]
-        TreeScanner.documentUriString(name)?.let { return it }
-        return directories[parent[index]] + "/" + name
-    }
-
-    fun displayNameOf(index: Int): String = TreeScanner.displayName(names[index])
-
-    fun folderOf(index: Int): String {
-        val dir = directories[parent[index]]
-        if (!dir.startsWith(TreeScanner.TREE_PREFIX)) return dir
-        val encodedId = dir.substringAfterLast("/document/", dir.substringAfterLast("/tree/", ""))
-        val id = PathDecoder.decode(encodedId)
-        return "~/" + id.substringAfter(':', id)
-    }
-
-    companion object {
-        val EMPTY = FileTable(emptyArray(), emptyArray(), emptyArray(), IntArray(0), LongArray(0), LongArray(0))
-    }
-}
-
-class FileIndex(private val context: Context, private val prefs: Prefs) {
 
     private val file = File(context.filesDir, "files.bin")
-    private val thread = HandlerThread("tacit-files").apply { start() }
-    private val handler = Handler(thread.looper)
-    private val generation = AtomicInteger()
+    private val scanHandler by lazy { Handler(HandlerThread("tacit-files-scan", Process.THREAD_PRIORITY_BACKGROUND).apply { start() }.looper) }
+    private val searchHandler by lazy { Handler(HandlerThread("tacit-files-search", Process.THREAD_PRIORITY_DEFAULT).apply { start() }.looper) }
+    private val main = Handler(Looper.getMainLooper())
+    private val searchGeneration = AtomicInteger()
+    private val scanGeneration = AtomicInteger()
+    private val lock = Any()
+    private val publishLock = Any()
+    private val listeners = ArrayList<(ScanState) -> Unit>()
+    private val waiters = ArrayList<() -> Unit>()
+    private var queued = false
+    private var running = false
+    private var rerun = false
 
     @Volatile
     private var table: FileTable? = null
 
     @Volatile
-    var indexing = false
+    var state: ScanState = ScanState.Idle
         private set
+
+    val busy: Boolean get() = synchronized(lock) { queued || running }
 
     fun hasFullAccess(): Boolean = StorageAccess.hasAllFiles() ||
         (Build.VERSION.SDK_INT < 30 &&
@@ -85,45 +59,206 @@ class FileIndex(private val context: Context, private val prefs: Prefs) {
 
     fun hasAccess(): Boolean = hasFullAccess() || GrantedTrees.list(context).isNotEmpty()
 
-    fun count(): Int = table?.count ?: 0
+    fun hasTable(): Boolean = (table?.count ?: 0) > 0
+
+    fun count(): Int = table?.count ?: (state as? ScanState.Done)?.count ?: 0
+
+    fun addStateListener(listener: (ScanState) -> Unit) {
+        listeners.add(listener)
+    }
+
+    fun removeStateListener(listener: (ScanState) -> Unit) {
+        listeners.remove(listener)
+    }
 
     fun search(query: String, limit: Int, callback: (List<FileHit>) -> Unit) {
-        val token = generation.incrementAndGet()
-        handler.post {
-            if (token != generation.get()) return@post
-            val current = table ?: loadFromDisk().also { table = it }
-            val hits = FileMatcher.search(current, query, limit) { token != generation.get() }
-            if (token == generation.get()) callback(hits)
+        val token = searchGeneration.incrementAndGet()
+        searchHandler.post {
+            if (token != searchGeneration.get()) return@post
+            val current = loadedTable()
+            val hits = FileMatcher.search(current, query, limit) { token != searchGeneration.get() }
+            if (token == searchGeneration.get()) callback(hits)
         }
     }
 
     fun cancel() {
-        generation.incrementAndGet()
+        searchGeneration.incrementAndGet()
+    }
+
+    fun preload() {
+        if (table != null) return
+        searchHandler.post { loadedTable() }
+    }
+
+    fun summarize() {
+        scanHandler.post {
+            if (state !== ScanState.Idle || !file.exists()) return@post
+            val header = readHeader()
+            if (header != null) announce(ScanState.Done(header.entryCount, header.createdAt, header.truncated))
+        }
     }
 
     fun rescan(done: (() -> Unit)? = null) {
-        handler.post {
-            if (!prefs.filesEnabled || !hasAccess()) {
-                done?.invoke()
-                return@post
+        synchronized(lock) {
+            if (done != null) waiters.add(done)
+            if (running) {
+                rerun = true
+                scanGeneration.incrementAndGet()
+                return
             }
-            indexing = true
-            val scanner = FileScanner(prefs.filesHidden)
-            if (hasFullAccess()) scanner.scanRoots(roots())
-            else for (tree in GrantedTrees.list(context)) scanner.scanTree(context.contentResolver, tree)
-            val built = scanner.build()
-            table = built
-            persist(built)
-            indexing = false
-            done?.invoke()
+            if (queued) return
+            queued = true
+        }
+        scanHandler.post(::runQueued)
+    }
+
+    fun maybeRefresh() {
+        scanHandler.post {
+            if (!prefs.filesEnabled || !hasAccess()) return@post
+            synchronized(lock) { if (queued || running) return@post }
+            val header = readHeader()
+            val finishedAt = (state as? ScanState.Done)?.at ?: 0L
+            if (RefreshPolicy.shouldRefresh(header, currentStamps(), System.currentTimeMillis(), finishedAt)) rescan()
         }
     }
 
     fun clear() {
-        handler.post {
+        synchronized(publishLock) {
+            scanGeneration.incrementAndGet()
             table = FileTable.EMPTY
-            file.delete()
+            assign(ScanState.Idle)
         }
+        scanHandler.post { file.delete() }
+    }
+
+    private fun assign(next: ScanState) {
+        synchronized(publishLock) { state = next }
+        main.post {
+            val now = state
+            for (listener in ArrayList(listeners)) listener(now)
+        }
+    }
+
+    private fun assignFor(generation: Int, next: ScanState) {
+        synchronized(publishLock) {
+            if (generation == scanGeneration.get()) assign(next)
+        }
+    }
+
+    private fun announce(next: ScanState) {
+        synchronized(publishLock) {
+            if (state === ScanState.Idle) assign(next)
+        }
+    }
+
+    private fun runQueued() {
+        synchronized(lock) {
+            queued = false
+            running = true
+        }
+        try {
+            scanOnce()
+        } catch (error: Throwable) {
+            onFailure(error)
+            val kept = table
+            val settled = if (kept != null && kept.count > 0) ScanState.Done(kept.count, System.currentTimeMillis(), false) else ScanState.Idle
+            synchronized(publishLock) { assign(settled) }
+        } finally {
+            var again = false
+            var finished: List<() -> Unit> = emptyList()
+            synchronized(lock) {
+                running = false
+                again = rerun
+                rerun = false
+                if (again) {
+                    queued = true
+                } else {
+                    finished = ArrayList(waiters)
+                    waiters.clear()
+                }
+            }
+            if (again) scanHandler.post(::runQueued) else for (callback in finished) callback()
+        }
+    }
+
+    private fun scanOnce() {
+        if (!prefs.filesEnabled || !hasAccess()) return
+        val previous = readHeader()
+        val generation = scanGeneration.incrementAndGet()
+        val startedAt = System.currentTimeMillis()
+        assignFor(generation, ScanState.Scanning(0, startedAt))
+        val stamps = currentStamps()
+        val loaded = table
+        val cold = (loaded == null || loaded.count == 0) && !file.exists()
+        val plan = plan(previous, cold)
+        var baseline = 0
+        var lastReport = SystemClock.elapsedRealtime()
+        var lastPartialCount = 0
+        var lastPartialAt = lastReport
+        var snapshotCost = 0L
+        for ((index, strategy) in plan.withIndex()) {
+            val builder = TableBuilder(TableBuilder.MAX_FILES, { scanGeneration.get() == generation }) { progress ->
+                val now = SystemClock.elapsedRealtime()
+                if (now - lastReport >= PROGRESS_MS) {
+                    lastReport = now
+                    assignFor(generation, ScanState.Scanning(maxOf(baseline, progress.count), startedAt))
+                }
+                val grown = progress.count - lastPartialCount
+                val due = grown >= PARTIAL_ENTRIES || (grown > 0 && now - lastPartialAt >= maxOf(PROGRESS_MS, snapshotCost * 4))
+                if (cold && baseline == 0 && due) {
+                    val begun = SystemClock.elapsedRealtime()
+                    val partial = progress.snapshot()
+                    synchronized(publishLock) { if (generation == scanGeneration.get()) table = partial }
+                    snapshotCost = SystemClock.elapsedRealtime() - begun
+                    lastPartialCount = progress.count
+                    lastPartialAt = SystemClock.elapsedRealtime()
+                }
+            }
+            strategy.scan(builder)
+            if (generation != scanGeneration.get()) return
+            val built = builder.snapshot()
+            val last = index == plan.lastIndex
+            val finishedAt = System.currentTimeMillis()
+            val walked = strategy.id != ScanStrategyIds.MEDIA_STORE
+            val identity = if (last && plan.size > 1) ScanStrategyIds.HYBRID else strategy.id
+            val header = IndexHeader(built.count, finishedAt, if (walked) finishedAt else previous?.verifiedAt ?: 0L, identity, builder.truncated, stamps)
+            if (!publish(generation, built, header)) return
+            baseline = built.count
+            if (last) assignFor(generation, ScanState.Done(built.count, finishedAt, builder.truncated))
+            else assignFor(generation, ScanState.Scanning(built.count, startedAt))
+        }
+    }
+
+    private fun plan(previous: IndexHeader?, cold: Boolean): List<ScanStrategy> {
+        val hidden = prefs.filesHidden
+        if (StorageAccess.hasAllFiles()) {
+            val walk = NioWalkStrategy(roots(), hidden)
+            val media = MediaStoreStrategy(context, hidden)
+            val now = System.currentTimeMillis()
+            if (cold) return listOf(media, walk)
+            if (!MEDIA_STORE_DEFAULT) return listOf(walk)
+            return if (RefreshPolicy.needsFullWalk(previous, now)) listOf(media, walk) else listOf(media)
+        }
+        if (hasFullAccess()) return listOf(NioWalkStrategy(roots(), hidden))
+        return listOf(TreeStrategy(context.contentResolver, GrantedTrees.list(context), hidden))
+    }
+
+    private fun publish(generation: Int, built: FileTable, header: IndexHeader): Boolean {
+        synchronized(publishLock) {
+            if (generation != scanGeneration.get()) return false
+            table = built
+        }
+        persist(built, header)
+        return true
+    }
+
+    private fun currentStamps(): List<VolumeStamp> {
+        if (Build.VERSION.SDK_INT < 30 || !StorageAccess.hasAllFiles()) return emptyList()
+        return runCatching {
+            MediaStore.getExternalVolumeNames(context).sorted().map {
+                VolumeStamp(it, MediaStore.getVersion(context, it), MediaStore.getGeneration(context, it))
+            }
+        }.getOrDefault(emptyList())
     }
 
     private fun roots(): List<File> {
@@ -139,137 +274,44 @@ class FileIndex(private val context: Context, private val prefs: Prefs) {
         return result
     }
 
-    private fun persist(data: FileTable) {
-        runCatching {
-            val temp = File(file.parentFile, "files.bin.tmp")
-            DataOutputStream(BufferedOutputStream(temp.outputStream(), 1 shl 17)).use { out ->
-                out.writeInt(VERSION)
-                out.writeInt(data.directories.size)
-                for (dir in data.directories) out.writeUTF(dir)
-                out.writeInt(data.count)
-                for (i in 0 until data.count) {
-                    out.writeUTF(data.names[i])
-                    out.writeInt(data.parent[i])
-                    out.writeLong(data.sizes[i])
-                    out.writeLong(data.modified[i])
-                }
-            }
-            temp.renameTo(file)
+    private fun loadedTable(): FileTable {
+        table?.let { return it }
+        val loaded = loadFromDisk()
+        return synchronized(publishLock) {
+            if (table == null) table = loaded
+            table!!
         }
     }
 
     private fun loadFromDisk(): FileTable {
         if (!file.exists()) return FileTable.EMPTY
-        return runCatching { readTable() }.getOrDefault(FileTable.EMPTY)
+        val loaded = runCatching {
+            DataInputStream(BufferedInputStream(file.inputStream(), BUFFER)).use { IndexFormat.read(it) }
+        }.getOrNull() ?: return FileTable.EMPTY
+        val header = loaded.header
+        announce(ScanState.Done(loaded.table.count, header?.createdAt ?: file.lastModified(), header?.truncated ?: false))
+        return loaded.table
     }
 
-    private fun readTable(): FileTable {
-        DataInputStream(BufferedInputStream(file.inputStream(), 1 shl 17)).use { input ->
-            if (input.readInt() != VERSION) return FileTable.EMPTY
-            val directories = Array(input.readInt()) { input.readUTF() }
-            val count = input.readInt()
-            val names = arrayOfNulls<String>(count)
-            val normalized = arrayOfNulls<String>(count)
-            val parent = IntArray(count)
-            val sizes = LongArray(count)
-            val modified = LongArray(count)
-            for (i in 0 until count) {
-                val name = input.readUTF()
-                names[i] = name
-                normalized[i] = TreeScanner.normalizedName(name)
-                parent[i] = input.readInt()
-                sizes[i] = input.readLong()
-                modified[i] = input.readLong()
-            }
-            return FileTable(directories, names.requireNoNulls(), normalized.requireNoNulls(), parent, sizes, modified)
+    private fun readHeader(): IndexHeader? {
+        if (!file.exists()) return null
+        return runCatching {
+            DataInputStream(BufferedInputStream(file.inputStream(), 4096)).use { IndexFormat.readHeader(it) }
+        }.getOrNull()
+    }
+
+    private fun persist(data: FileTable, header: IndexHeader) {
+        runCatching {
+            val temp = File(file.parentFile, "files.bin.tmp")
+            DataOutputStream(BufferedOutputStream(temp.outputStream(), BUFFER)).use { IndexFormat.write(it, data, header) }
+            temp.renameTo(file)
         }
     }
 
     companion object {
-        private const val VERSION = 1
-    }
-}
-
-class FileScanner(private val includeHidden: Boolean) {
-
-    private val directories = ArrayList<String>()
-    private val names = ArrayList<String>()
-    private val normalized = ArrayList<String>()
-    private val parents = ArrayList<Int>()
-    private val sizes = ArrayList<Long>()
-    private val modified = ArrayList<Long>()
-
-    private val treeDirectories = HashMap<String, Int>()
-
-    fun scan(roots: List<File>): FileTable {
-        scanRoots(roots)
-        return build()
-    }
-
-    fun scanRoots(roots: List<File>) {
-        for (root in roots) {
-            if (names.size >= MAX_FILES) return
-            walk(root)
-        }
-    }
-
-    fun scanTree(resolver: android.content.ContentResolver, tree: android.net.Uri) {
-        TreeScanner(resolver, includeHidden) { name, parentKey, size, time ->
-            val parentIndex = treeDirectories.getOrPut(parentKey) {
-                directories.add(parentKey)
-                directories.size - 1
-            }
-            names.add(name)
-            normalized.add(TreeScanner.normalizedName(name))
-            parents.add(parentIndex)
-            sizes.add(size)
-            modified.add(time)
-            names.size < MAX_FILES
-        }.scan(tree)
-    }
-
-    fun build(): FileTable = FileTable(
-        directories.toTypedArray(), names.toTypedArray(), normalized.toTypedArray(),
-        parents.toIntArray(), sizes.toLongArray(), modified.toLongArray()
-    )
-
-    private fun walk(root: File) {
-        val stack = ArrayDeque<File>()
-        stack.addLast(root)
-        while (stack.isNotEmpty()) {
-            val dir = stack.removeLast()
-            val children = dir.listFiles() ?: continue
-            val dirIndex = directories.size
-            directories.add(dir.absolutePath)
-            for (child in children) {
-                val name = child.name
-                if (!includeHidden && name.startsWith('.')) continue
-                if (child.isDirectory) {
-                    if (isRestricted(child)) continue
-                    stack.addLast(child)
-                    add(name + "/", dirIndex, 0L, child.lastModified())
-                } else {
-                    add(name, dirIndex, child.length(), child.lastModified())
-                }
-                if (names.size >= MAX_FILES) return
-            }
-        }
-    }
-
-    private fun add(name: String, parent: Int, size: Long, time: Long) {
-        names.add(name)
-        normalized.add(Normalizer.normalize(name))
-        parents.add(parent)
-        sizes.add(size)
-        modified.add(time)
-    }
-
-    private fun isRestricted(dir: File): Boolean {
-        val path = dir.absolutePath
-        return path.endsWith("/Android/data") || path.endsWith("/Android/obb")
-    }
-
-    companion object {
-        const val MAX_FILES = 500_000
+        private const val BUFFER = 1 shl 17
+        private const val PROGRESS_MS = 250L
+        private const val PARTIAL_ENTRIES = 25_000
+        private const val MEDIA_STORE_DEFAULT = false
     }
 }

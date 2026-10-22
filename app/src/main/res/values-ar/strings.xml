@@ -123,6 +123,10 @@
     <string name="files">الملفات</string>
     <string name="files_hidden">الملفات المخفية</string>
     <string name="rescan_files">إعادة فهرسة الملفات (%1$d مفهرس)</string>
+    <string name="files_indexing">جارٍ فهرسة الملفات… عُثر على %1$s</string>
+    <string name="files_not_indexed">لم تُفهرس الملفات بعد. انقر لفتح الإعدادات</string>
+    <string name="files_indexed_at">آخر فهرسة %1$s</string>
+    <string name="files_limit_reached">بلغت الفهرسة الحد الأقصى: فُهرس أول %1$s ملف فقط</string>
     <string name="files_permission_explain">الوصول إلى كل الملفات يبحث في كل شيء عدا Android/data و Android/obb. أو اختر مجلدات محددة بدلًا من ذلك.</string>
     <string name="clipboard">سجل الحافظة</string>
     <string name="clipboard_limit">يسمح أندرويد لـ Tacit بقراءة الحافظة فقط أثناء فتحه. ما يُنسخ بين المرات لا يُحفظ.</string>
