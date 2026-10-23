@@ -10,8 +10,8 @@ android {
         applicationId = "app.tacit"
         minSdk = 29
         targetSdk = 36
-        versionCode = 10002
-        versionName = "1.0.2-beta"
+        versionCode = 10003
+        versionName = "1.0.3-beta"
         testInstrumentationRunner = "app.tacit.TacitTestRunner"
     }
 

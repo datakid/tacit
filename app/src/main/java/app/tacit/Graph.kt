@@ -48,7 +48,7 @@ object Graph {
     val snippets by lazy { SnippetStore(context) }
     val quicklinks by lazy { QuicklinkStore(context) }
     val clipboard by lazy { ClipboardStore(context, prefs) }
-    val files by lazy { FileIndex(context, prefs) }
+    val files by lazy { FileIndex(context, prefs) { recordFailure(it) } }
     val icons by lazy { IconCache(context, prefs) }
 
     val apps by lazy { AppSource(context) }
@@ -62,6 +62,11 @@ object Graph {
     @Volatile
     var crashReportSaved = false
         private set
+
+    fun recordFailure(error: Throwable) {
+        CrashLog.write(context.filesDir, error)
+        crashReportSaved = true
+    }
 
     private val listeners = ArrayList<() -> Unit>()
     private val rebuildQueued = AtomicBoolean(false)

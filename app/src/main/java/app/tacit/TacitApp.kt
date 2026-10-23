@@ -16,16 +16,22 @@ class TacitApp : Application() {
     private fun installCrashLog() {
         val previous = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, error ->
-            runCatching {
-                val trace = StringWriter().also { error.printStackTrace(PrintWriter(it)) }.toString()
-                File(filesDir, CRASH_FILE).writeText("${System.currentTimeMillis()}\n${BuildInfo.describe()}\n$trace")
-            }
+            CrashLog.write(filesDir, error)
             previous?.uncaughtException(thread, error)
         }
     }
 
     companion object {
         const val CRASH_FILE = "last_crash.txt"
+    }
+}
+
+object CrashLog {
+    fun write(directory: File, error: Throwable) {
+        runCatching {
+            val trace = StringWriter().also { error.printStackTrace(PrintWriter(it)) }.toString()
+            File(directory, TacitApp.CRASH_FILE).writeText("${System.currentTimeMillis()}\n${BuildInfo.describe()}\n$trace")
+        }
     }
 }
 

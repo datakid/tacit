@@ -25,19 +25,32 @@ object FileMatcher {
         val query = parse(raw)
         if (query.terms.isEmpty() && query.extension == null) return emptyList()
         val implicitExtension = if (query.extension == null && query.terms.size > 1) query.terms.last().takeIf { it in COMMON_EXTENSIONS } else null
-        val terms = if (implicitExtension != null) query.terms.dropLast(1) else query.terms
+        val terms = (if (implicitExtension != null) query.terms.dropLast(1) else query.terms).toTypedArray()
         val extension = query.extension ?: implicitExtension
+        val suffix = if (extension != null) ".$extension" else null
+        val allowedDirectories = query.folder?.let { folder ->
+            val searchable = table.searchableDirectories
+            BooleanArray(searchable.size) { searchable[it].contains(folder) }
+        }
+        var queryMask = 0L
+        for (term in terms) queryMask = queryMask or NameMasks.of(term)
+        val masks = table.masks
+        val normalized = table.normalized
+        val parent = table.parent
+        val modified = table.modified
+        val count = table.count
         val bestIndex = IntArray(limit) { -1 }
         val bestScore = IntArray(limit)
         var filled = 0
-        for (i in 0 until table.count) {
+        for (i in 0 until count) {
             if ((i and 4095) == 0 && cancelled()) return emptyList()
-            val name = table.normalized[i]
-            if (extension != null && !name.endsWith(".$extension")) continue
-            if (query.folder != null && !table.searchableDirectories[table.parent[i]].contains(query.folder)) continue
+            if ((masks[i] and queryMask) != queryMask) continue
+            val name = normalized[i]
+            if (suffix != null && !name.endsWith(suffix)) continue
+            if (allowedDirectories != null && !allowedDirectories[parent[i]]) continue
             val score = scoreName(name, terms)
             if (score <= 0) continue
-            val adjusted = score + recency(table.modified[i], now)
+            val adjusted = score + recency(modified[i], now)
             if (filled < limit) {
                 bestIndex[filled] = i
                 bestScore[filled] = adjusted
@@ -60,7 +73,7 @@ object FileMatcher {
             }
     }
 
-    fun scoreName(name: String, terms: List<String>): Int {
+    private fun scoreName(name: String, terms: Array<String>): Int {
         if (terms.isEmpty()) return 1
         var total = 0
         for (term in terms) {
@@ -69,8 +82,12 @@ object FileMatcher {
             val atStart = index == 0 || !name[index - 1].isLetterOrDigit()
             total += if (atStart) 100 else 40
         }
-        val base = name.substringBeforeLast('.')
-        if (terms.size == 1 && base == terms[0]) total += 200
+        if (terms.size == 1) {
+            val dot = name.lastIndexOf('.')
+            val baseLength = if (dot < 0) name.length else dot
+            val only = terms[0]
+            if (only.length == baseLength && name.regionMatches(0, only, 0, baseLength)) total += 200
+        }
         return total - name.length.coerceAtMost(80) / 4
     }
 

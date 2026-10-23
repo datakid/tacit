@@ -1,0 +1,6 @@
+Files build.
+• The first file search shows indexing progress and early results
+• New downloads appear without Rescan
+• File search is faster
+• Results from chosen folders open their folder
+• A failed scan keeps the old index

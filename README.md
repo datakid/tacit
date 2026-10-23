@@ -26,8 +26,8 @@ A keyboard-first, offline, black-and-white Android launcher. You type, press Ent
   - per-app info, notification and in-app settings pages
 
   Also: a flashlight toggle, and a "Search system settings" row where the device supports it.
-- **Files** (opt-in): two ways to grant access. **All files access** walks every shared volume (skipping Android/data and Android/obb). **Choose folders** is for people who decline that: grant individual folders through Android's picker, and Tacit remembers them across reboots (persisted tree grants walked with DocumentsContract). Android won't let you pick the storage root or the Download root this way. Granted folders can be added or removed in Settings.
-  - The index is a compact binary file; search runs on a background thread and cancels on each keystroke.
+- **Files** (opt-in): two ways to grant access. **All files access** indexes every shared volume (skipping Android/data and Android/obb): MediaStore first, which takes a fraction of a second, then a walk of the disk at most once a day and whenever you press Rescan. **Choose folders** is for people who decline that: grant individual folders through Android's picker, and Tacit remembers them across reboots (persisted tree grants walked with DocumentsContract). Android won't let you pick the storage root or the Download root this way. Granted folders can be added or removed in Settings.
+  - The index is a compact binary file. A scan runs on its own low-priority thread; the first one shows "Indexing files… N found" and early results, and the index refreshes on its own when you open Tacit or Settings and Android reports changes. Search runs on another thread and cancels on each keystroke.
   - Filters: `ext:pdf`, `in:download`, `*.jpg`, `report pdf`.
   - Opens files through Tacit's own read-only provider. Long-press gives share, open folder, copy path.
 - **Clipboard history** (opt-in):
@@ -101,7 +101,7 @@ All versions come from the verified data sheet.
 ## Tests
 | Suite | Where | Command |
 |---|---|---|
-| JVM unit tests: scorer, calculator, parsing, detectors, CSV, files, folder-grant names, keystroke budget on 1,000 apps + 3,000 contacts, golden ranking (`golden/ranking.tsv`) and golden file search (`golden/files.tsv`, 50,000 entries) | CI | `./gradlew testDebugUnitTest` |
+| JVM unit tests: scorer, calculator, parsing, detectors, CSV, files, file index format and migration, matcher equivalence and speed, folder-grant names, keystroke budget on 1,000 apps + 3,000 contacts, golden ranking (`golden/ranking.tsv`) and golden file search (`golden/files.tsv`, 50,000 entries) | CI | `./gradlew testDebugUnitTest` |
 | Device tests: search screen (Espresso), settings, aliases, quicklinks, actions, drawer and first-run card (UI Automator), screenshots, 1.0.0 backup compatibility, intent and platform contracts; written but not in the CI list: entry points (one test crashes, see `docs/HANDOFF.md`) and keyboard | CI emulators (API 34, 35, 36) or phone | `./gradlew connectedDebugAndroidTest` |
 | Speed: cold, warm and hot startup; frames for a 30-keystroke script; `tacit.query` trace time; KISS comparison | **your phones** | `./gradlew :benchmark:connectedBenchmarkAndroidTest` |
 | Speed profile: baseline profile generator | your phone | `./gradlew :benchmark:connectedBenchmarkAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=app.tacit.benchmark.BaselineProfileGenerator`, then copy the generated `*-baseline-prof.txt` over `app/src/main/baseline-prof.txt` |
@@ -112,9 +112,8 @@ The fixtures (`app/src/sharedTest/.../Fixtures.kt`, `FileFixtures.kt`) are gener
 - **Phone testing and real numbers.** Everything was checked on emulators. Benchmarks are written but need your phones (one flagship, one budget, plus KISS installed).
 - **Applying the speed profile on F-Droid installs.** `app/src/main/baseline-prof.txt` is a hand-written starter. Play installs pick it up automatically; F-Droid installs need `androidx.profileinstaller`, which isn't in the verified version sheet. Add it once you confirm the version.
 - **F-Droid submission.** The listing text is in `fastlane/` and a draft recipe is in `docs/fdroid/`; the recipe has not been run through F-Droid's tools, and reproducibility on F-Droid's builder is unproven (see `docs/SIGNING.md`).
-- File scan speed and a visible "still scanning" state for the first minutes (see `docs/HANDOFF.md`)
 - detekt and ktlint (versions not in the sheet; `RepoRulesTest` covers the no-comment rule meanwhile)
-- MediaStore seeding, FileObserver and scheduled rescans for files
+- FileObserver for files (decision 75)
 - Signal and Telegram buttons (the code paths exist, but the buttons aren't shown)
 - Third-party widget hosting (deliberately skipped, see `docs/decisions.md`)
 

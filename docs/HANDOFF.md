@@ -32,7 +32,7 @@ Tacit is at 1.0.1-beta (1.0.0 plus the safety net for 1.1). CI builds it, runs t
 - `calc/`: calculator, units, city to zone table. Unit-tested.
 - `clip/`: sensitive detectors (tested), the encrypted clipboard store and the clipboard lock.
 - `data/`: alias store, snippet store, quicklink store, CSV/TSV, JSON backup, contact export.
-- `files/`: file index (scan, persist, background search) and matcher (tested).
+- `files/`: file index (two threads, scan generations, `ScanState`, index v2 in `IndexFormat`), the scanners (`FileWalkers`, `MediaStoreStrategy`, `TreeScanner`), `RefreshPolicy` and the matcher (tested).
 - `sources/`: apps, contacts, Settings discovery, snippets, quicklinks to `SearchItem`s.
 - `actions/`: every outgoing intent, the typed-action rows (`ActionRows`), quicklink launching and pinned shortcuts, the contact export screen and the read-only file provider.
 - `ui/`: search screen (platform `ListView`, no RecyclerView), settings, aliases, snippets, quicklinks, long-press menu, icon cache, app drawer letter strip.
@@ -47,7 +47,7 @@ Tacit is at 1.0.1-beta (1.0.0 plus the safety net for 1.1). CI builds it, runs t
 - [ ] `gos` finds Asmaa Gouda; Arabic contacts found from Latin typing
 - [ ] Call, Message, WhatsApp and WhatsApp Business open the right app and chat
 - [ ] Settings coverage: write down which common screens are missing (Pixel, Samsung, Xiaomi)
-- [ ] Files: All files access flow, Choose folders flow (Settings → Files → Choose folders → Documents → Rescan), rescan time, opening a PDF or an image, open folder
+- [ ] Files: first search while indexing shows the indexing row and early results; a new download appears without Rescan; All files access flow, Choose folders flow (Settings → Files → Choose folders → Documents → Rescan), rescan time, opening a PDF or an image, open folder
 - [ ] Clipboard: copy in another app, open Tacit, check it's captured; the toast appears only for new clips; OTPs are not stored; lock works
 - [ ] Install, update and uninstall an app while Tacit is open: the row and its icon update within a second or two; install or remove WhatsApp and the contact buttons follow when you return to Tacit
 - [ ] Settings → Import: choose a backup, the counts dialog appears, Cancel changes nothing, Replace applies everything and the theme at once
@@ -63,9 +63,10 @@ Tacit is at 1.0.1-beta (1.0.0 plus the safety net for 1.1). CI builds it, runs t
 - [ ] Run the benchmark module on a flagship and a budget phone and record the numbers
 
 ## Later (owner notes)
-- Files: make the scan as fast as possible, and show a clear scanning state while the index is being built, so a search in the first minutes is not read as "not found" (2026-10-16). A files tab in the drawer waits for this (decision 58).
+- Files tab in the drawer (decision 58): it waited for scan speed and a visible scanning state; both shipped in 1.0.3-beta.
 - Find the cause of the `SettingsApplyTest` flake (1.0.1-beta: not reproduced in ten isolated runs, idle waits added, decision 69).
 - Narrow phones: the four contact buttons can truncate the name.
+- Per-app actions like KISS (2026-10-22): a browser's new tab and private tab, and the shortcuts other apps declare. Tacit already lists every dynamic, manifest and pinned shortcut of other apps as a row while it is the default home app (`AppSource.loadShortcuts`; Android hides them otherwise, see limits.md), but a shortcut row matches only its own label, so typing the app's name does not bring them up. Next: let an app's name match its shortcuts, show them in the app row's long-press menu, and check on a phone which apps expose any. Screens that an app does not declare as shortcuts need the activity explorer planned for M12.
 - Main-thread disk work that is left (1.0.2-beta): `Prefs` loads its preferences inside `Graph.init`, `Welcome.pending` checks its marker file once per process, and the quicklink editor saves, deletes and rechecks targets on the main thread (the stores write their files synchronously, and several device tests read them straight after the click). Moving the editor to the worker needs an asynchronous store API first.
 - GitHub Actions: `ubuntu-latest` moves to Ubuntu 26 on 2026-10-19; the Node 20 action deprecation also needs a look (1.0.1-beta: runners pinned to `ubuntu-24.04`, actions on node24 majors, `setup-gradle` with `cache-provider: basic`).
 - Add real phone screenshots to `fastlane/metadata/android/*/images/phoneScreenshots/`.
