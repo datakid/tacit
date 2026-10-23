@@ -1,5 +1,7 @@
 package app.tacit.files
 
+enum class ScanPhase { MEDIA_STORE, WALK }
+
 object RefreshPolicy {
 
     const val MIN_GAP_MS = 120_000L
@@ -24,4 +26,10 @@ object RefreshPolicy {
     }
 
     fun needsFullWalk(previous: IndexHeader?, now: Long): Boolean = previous == null || now - previous.verifiedAt > FULL_SCAN_MS
+
+    fun phases(cold: Boolean, forceWalk: Boolean, previous: IndexHeader?, now: Long): List<ScanPhase> = when {
+        cold -> listOf(ScanPhase.MEDIA_STORE, ScanPhase.WALK)
+        forceWalk || needsFullWalk(previous, now) -> listOf(ScanPhase.WALK)
+        else -> listOf(ScanPhase.MEDIA_STORE)
+    }
 }

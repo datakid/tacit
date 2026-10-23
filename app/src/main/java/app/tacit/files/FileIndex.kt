@@ -43,6 +43,7 @@ class FileIndex(
     private var queued = false
     private var running = false
     private var rerun = false
+    private var walkWanted = false
 
     @Volatile
     private var table: FileTable? = null
@@ -98,9 +99,12 @@ class FileIndex(
         }
     }
 
-    fun rescan(done: (() -> Unit)? = null) {
+    fun rescan(done: (() -> Unit)? = null) = request(done, true)
+
+    private fun request(done: (() -> Unit)?, forceWalk: Boolean) {
         synchronized(lock) {
             if (done != null) waiters.add(done)
+            if (forceWalk) walkWanted = true
             if (running) {
                 rerun = true
                 scanGeneration.incrementAndGet()
@@ -118,7 +122,7 @@ class FileIndex(
             synchronized(lock) { if (queued || running) return@post }
             val header = readHeader()
             val finishedAt = (state as? ScanState.Done)?.at ?: 0L
-            if (RefreshPolicy.shouldRefresh(header, currentStamps(), System.currentTimeMillis(), finishedAt)) rescan()
+            if (RefreshPolicy.shouldRefresh(header, currentStamps(), System.currentTimeMillis(), finishedAt)) request(null, false)
         }
     }
 
@@ -190,7 +194,8 @@ class FileIndex(
         val stamps = currentStamps()
         val loaded = table
         val cold = (loaded == null || loaded.count == 0) && !file.exists()
-        val plan = plan(previous, cold)
+        val forceWalk = synchronized(lock) { walkWanted.also { walkWanted = false } }
+        val plan = plan(previous, cold, forceWalk)
         var baseline = 0
         var lastReport = SystemClock.elapsedRealtime()
         var lastPartialCount = 0
@@ -229,15 +234,14 @@ class FileIndex(
         }
     }
 
-    private fun plan(previous: IndexHeader?, cold: Boolean): List<ScanStrategy> {
+    private fun plan(previous: IndexHeader?, cold: Boolean, forceWalk: Boolean): List<ScanStrategy> {
         val hidden = prefs.filesHidden
         if (StorageAccess.hasAllFiles()) {
             val walk = NioWalkStrategy(roots(), hidden)
             val media = MediaStoreStrategy(context, hidden)
-            val now = System.currentTimeMillis()
-            if (cold) return listOf(media, walk)
-            if (hidden) return listOf(walk)
-            return if (RefreshPolicy.needsFullWalk(previous, now)) listOf(media, walk) else listOf(media)
+            return RefreshPolicy.phases(cold, forceWalk, previous, System.currentTimeMillis()).map {
+                if (it == ScanPhase.MEDIA_STORE) media else walk
+            }
         }
         if (hasFullAccess()) return listOf(NioWalkStrategy(roots(), hidden))
         return listOf(TreeStrategy(context.contentResolver, GrantedTrees.list(context), hidden))

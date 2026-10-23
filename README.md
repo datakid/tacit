@@ -26,7 +26,7 @@ A keyboard-first, offline, black-and-white Android launcher. You type, press Ent
   - per-app info, notification and in-app settings pages
 
   Also: a flashlight toggle, and a "Search system settings" row where the device supports it.
-- **Files** (opt-in): two ways to grant access. **All files access** walks every shared volume (skipping Android/data and Android/obb). **Choose folders** is for people who decline that: grant individual folders through Android's picker, and Tacit remembers them across reboots (persisted tree grants walked with DocumentsContract). Android won't let you pick the storage root or the Download root this way. Granted folders can be added or removed in Settings.
+- **Files** (opt-in): two ways to grant access. **All files access** indexes every shared volume (skipping Android/data and Android/obb): MediaStore first, which takes a fraction of a second, then a walk of the disk at most once a day and whenever you press Rescan. **Choose folders** is for people who decline that: grant individual folders through Android's picker, and Tacit remembers them across reboots (persisted tree grants walked with DocumentsContract). Android won't let you pick the storage root or the Download root this way. Granted folders can be added or removed in Settings.
   - The index is a compact binary file. A scan runs on its own low-priority thread; the first one shows "Indexing files… N found" and early results, and the index refreshes on its own when you open Tacit or Settings and Android reports changes. Search runs on another thread and cancels on each keystroke.
   - Filters: `ext:pdf`, `in:download`, `*.jpg`, `report pdf`.
   - Opens files through Tacit's own read-only provider. Long-press gives share, open folder, copy path.

@@ -6,7 +6,10 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import app.tacit.files.FileHit
 import app.tacit.files.FileIndex
+import app.tacit.files.IndexFormat
+import app.tacit.files.IndexHeader
 import app.tacit.files.ScanState
+import app.tacit.files.ScanStrategyIds
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -14,6 +17,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.io.DataInputStream
 import java.io.File
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -78,6 +82,22 @@ class FileIndexTest {
     }
 
     private fun names(hits: List<FileHit>): List<String> = hits.map { it.name }
+
+    private fun storedHeader(): IndexHeader =
+        DataInputStream(File(context.filesDir, "files.bin").inputStream().buffered()).use { IndexFormat.readHeader(it) }!!
+
+    @Test
+    fun theFirstScanShowsMediaStoreThenWalksAndARescanWalksAgain() {
+        finish(Graph.files)
+        val first = storedHeader()
+        assertEquals(ScanStrategyIds.HYBRID, first.strategy)
+        assertTrue(first.verifiedAt > 0L)
+        assertTrue(first.volumes.isNotEmpty())
+        finish(Graph.files)
+        val second = storedHeader()
+        assertEquals(ScanStrategyIds.NIO_WALK, second.strategy)
+        assertTrue(second.verifiedAt >= first.verifiedAt)
+    }
 
     @Test
     fun aRescanIndexesTheFilesAndSearchFindsThem() {

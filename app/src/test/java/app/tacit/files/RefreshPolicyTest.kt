@@ -1,5 +1,6 @@
 package app.tacit.files
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -14,6 +15,24 @@ class RefreshPolicyTest {
         IndexHeader(10, createdAt, verifiedAt, ScanStrategyIds.NIO_WALK, false, volumes.toList())
 
     private val stamp = VolumeStamp("external_primary", "Android-37.0", 100L)
+
+    @Test
+    fun theFirstScanShowsMediaStoreAtOnceAndThenWalks() {
+        assertEquals(listOf(ScanPhase.MEDIA_STORE, ScanPhase.WALK), RefreshPolicy.phases(true, false, null, now))
+        assertEquals(listOf(ScanPhase.MEDIA_STORE, ScanPhase.WALK), RefreshPolicy.phases(true, true, header(now - hour), now))
+    }
+
+    @Test
+    fun aRefreshUsesMediaStoreAloneWhileTheLastWalkIsYoungerThanADay() {
+        assertEquals(listOf(ScanPhase.MEDIA_STORE), RefreshPolicy.phases(false, false, header(now - hour, verifiedAt = now - 23 * hour), now))
+    }
+
+    @Test
+    fun aRefreshWalksWhenTheLastWalkIsOldOrUnknownOrTheUserAsked() {
+        assertEquals(listOf(ScanPhase.WALK), RefreshPolicy.phases(false, false, header(now - hour, verifiedAt = now - 25 * hour), now))
+        assertEquals(listOf(ScanPhase.WALK), RefreshPolicy.phases(false, false, null, now))
+        assertEquals(listOf(ScanPhase.WALK), RefreshPolicy.phases(false, true, header(now - hour, verifiedAt = now - hour), now))
+    }
 
     @Test
     fun noIndexOnDiskAndNothingScannedYetMeansScanNow() {
