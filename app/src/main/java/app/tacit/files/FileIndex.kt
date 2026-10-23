@@ -236,7 +236,7 @@ class FileIndex(
             val media = MediaStoreStrategy(context, hidden)
             val now = System.currentTimeMillis()
             if (cold) return listOf(media, walk)
-            if (!MEDIA_STORE_DEFAULT) return listOf(walk)
+            if (hidden) return listOf(walk)
             return if (RefreshPolicy.needsFullWalk(previous, now)) listOf(media, walk) else listOf(media)
         }
         if (hasFullAccess()) return listOf(NioWalkStrategy(roots(), hidden))
@@ -312,6 +312,5 @@ class FileIndex(
         private const val BUFFER = 1 shl 17
         private const val PROGRESS_MS = 250L
         private const val PARTIAL_ENTRIES = 25_000
-        private const val MEDIA_STORE_DEFAULT = true
     }
 }

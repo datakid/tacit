@@ -45,7 +45,6 @@ class FileScanBenchmarkTest {
     @After
     fun tearDown() {
         val cleaned = time { bench.deleteRecursively() }
-        shell("appops set ${context.packageName} MANAGE_EXTERNAL_STORAGE default")
         report("cleaned ms=$cleaned")
     }
 
@@ -114,6 +113,9 @@ class FileScanBenchmarkTest {
         return paths
     }
 
+    private fun hiddenCount(table: FileTable): Int =
+        benchPaths(table).count { it.contains("/.cache/") && !it.endsWith("/") }
+
     private fun category(path: String): String = when {
         path.contains("/NoMedia/") -> "nomedia"
         path.contains("/Fresh/") -> "fresh"
@@ -159,6 +161,9 @@ class FileScanBenchmarkTest {
         summarize("file_not_in_nio", file - nio)
         summarize("nio_not_in_file", nio - file)
 
+        val hiddenNio = run(NioWalkStrategy(roots, true)).second
+        val hiddenMedia = run(MediaStoreStrategy(context, true)).second
+        report("hidden files nio=${hiddenCount(hiddenNio)} mediastore=${hiddenCount(hiddenMedia)} expected=$HIDDEN")
         report("rows ${describeRows()}")
         assertEquals("the NIO walker must find exactly what the File walker finds", file, nio)
         report("finished")
