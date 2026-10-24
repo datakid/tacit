@@ -1,5 +1,6 @@
 package app.tacit.ui
 
+import android.app.AlertDialog
 import android.content.Context
 import android.graphics.Typeface
 import android.graphics.drawable.Drawable
@@ -18,6 +19,7 @@ import app.tacit.R
 import app.tacit.core.ItemKind
 import app.tacit.core.QuicklinkType
 import app.tacit.core.RowDensity
+import app.tacit.core.RowLayout
 import app.tacit.core.SearchItem
 import app.tacit.sources.ContactInfo
 
@@ -34,7 +36,8 @@ private class ActionSpec(val action: ContactAction, val icon: Int, val label: In
 class ResultAdapter(
     private val context: Context,
     private val callbacks: RowCallbacks,
-    private val palette: Palette = Ui.palette(context)
+    private val palette: Palette = Ui.palette(context),
+    widthDp: Int = context.resources.configuration.screenWidthDp
 ) : BaseAdapter() {
 
     private var items: List<SearchItem> = emptyList()
@@ -50,11 +53,20 @@ class ResultAdapter(
     private val icons = IconSet(context, palette.foreground)
     private val mediumFace: Typeface = Typeface.create(Typeface.DEFAULT, 500, false)
     private val density = RowDensity.of(Graph.prefs.density)
+    private var buttonsFit = RowLayout.buttonsFit(widthDp, density.slotDp)
+    var screenWidthDp: Int = widthDp
+        set(value) {
+            if (value == field) return
+            field = value
+            buttonsFit = RowLayout.buttonsFit(value, density.slotDp)
+            notifyDataSetChanged()
+        }
     private val dp1 = Ui.dp(context, 1)
     private val dp4 = Ui.dp(context, 4)
     private val dp8 = Ui.dp(context, 8)
     private val dp12 = Ui.dp(context, 12)
-    private val dp48 = Ui.dp(context, 48)
+    private val dp48 = Ui.dp(context, RowLayout.BUTTON_DP)
+    private val iconPad = Ui.dp(context, (density.slotDp - density.iconDp) / 2)
     private val rowHeight = Ui.dp(context, density.rowDp)
     private val slotSize = Ui.dp(context, density.slotDp)
     private val circleSize = Ui.dp(context, density.slotDp - 8)
@@ -103,6 +115,10 @@ class ResultAdapter(
         val subtitle: TextView = Ui.text(context, "", density.subtitleSp, palette.muted)
         val actions: LinearLayout = Ui.row(context)
         val actionButtons = ArrayList<ImageView>(specs.size)
+        val moreButton = ImageView(context)
+        val wanted = BooleanArray(specs.size)
+        val overflow = IntArray(specs.size)
+        var overflowCount = 0
         val selectedBackground = GradientDrawable().apply {
             setColor(palette.surface)
             cornerRadius = Ui.dp(context, 10).toFloat()
@@ -132,7 +148,7 @@ class ResultAdapter(
                 setStroke(dp1, palette.line)
             }
             kindIcon.setPadding(kindPad, kindPad, kindPad, kindPad)
-            appIcon.setPadding(dp4, dp4, dp4, dp4)
+            appIcon.setPadding(iconPad, iconPad, iconPad, iconPad)
             slot.addView(initials, FrameLayout.LayoutParams(circleSize, circleSize, Gravity.CENTER))
             slot.addView(kindIcon, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
             slot.addView(appIcon, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
@@ -141,10 +157,18 @@ class ResultAdapter(
             title.textAlignment = View.TEXT_ALIGNMENT_VIEW_START
             subtitle.textAlignment = View.TEXT_ALIGNMENT_VIEW_START
             subtitle.textDirection = View.TEXT_DIRECTION_FIRST_STRONG_LTR
-            val texts = Ui.column(context)
+            val texts = if (density.inlineSubtitle) Ui.row(context).apply { gravity = Gravity.TOP } else Ui.column(context)
             texts.setPaddingRelative(dp12, 0, dp4, 0)
-            texts.addView(title)
-            texts.addView(subtitle)
+            if (density.inlineSubtitle) {
+                subtitle.textAlignment = View.TEXT_ALIGNMENT_VIEW_END
+                texts.addView(title, Ui.weight())
+                texts.addView(subtitle, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                    marginStart = Ui.dp(context, RowLayout.SUBTITLE_GAP_DP)
+                })
+            } else {
+                texts.addView(title)
+                texts.addView(subtitle)
+            }
 
             val actionClick = View.OnClickListener { view ->
                 val item = boundItem
@@ -164,6 +188,16 @@ class ResultAdapter(
                 actionButtons.add(button)
                 actions.addView(button, LinearLayout.LayoutParams(dp48, dp48))
             }
+            moreButton.apply {
+                setImageDrawable(icons.make(R.drawable.ic_action_more))
+                scaleType = ImageView.ScaleType.CENTER
+                contentDescription = context.getString(R.string.action_more)
+                background = Ui.ripple(context, palette, oval = true)
+                isClickable = true
+                visibility = View.GONE
+                setOnClickListener { showMore(it) }
+            }
+            actions.addView(moreButton, LinearLayout.LayoutParams(dp48, dp48))
             actions.visibility = View.GONE
 
             root.addView(slot, LinearLayout.LayoutParams(slotSize, slotSize))
@@ -176,11 +210,20 @@ class ResultAdapter(
             val sub = subtitleFor(item)
             title.text = item.label
             subtitle.text = sub
-            Ui.gone(subtitle, sub.isEmpty())
             root.background = if (isSelected) selectedBackground else null
             bindIcon(item)
-            bindActions(item)
+            showSubtitle(sub, bindActions(item))
             root.contentDescription = if (sub.isEmpty()) item.label else item.label + ", " + sub
+        }
+
+        private fun showSubtitle(sub: String, slots: Int) {
+            if (!density.inlineSubtitle) {
+                Ui.gone(subtitle, sub.isEmpty())
+                return
+            }
+            val room = RowLayout.subtitleMaxDp(screenWidthDp, density.slotDp, slots)
+            Ui.gone(subtitle, sub.isEmpty() || room == 0)
+            if (room > 0) subtitle.maxWidth = Ui.dp(context, room)
         }
 
         private fun subtitleFor(item: SearchItem): String = when (item.kind) {
@@ -230,19 +273,47 @@ class ResultAdapter(
             return made
         }
 
-        private fun bindActions(item: SearchItem) {
+        private fun bindActions(item: SearchItem): Int {
             val info = item.extra as? ContactInfo
             if (item.kind != ItemKind.CONTACT || (info != null && info.numbers.isEmpty())) {
                 Ui.gone(actions, true)
-                return
+                return 0
             }
             Ui.gone(actions, false)
             val hasWa = ContactAction.WHATSAPP in installedMessengers
             val hasWab = ContactAction.WHATSAPP_BUSINESS in installedMessengers
-            Ui.gone(actionButtons[0], false)
-            Ui.gone(actionButtons[1], false)
-            Ui.gone(actionButtons[2], !hasWa)
-            Ui.gone(actionButtons[3], !(hasWab && (!hasWa || info?.whatsappBusinessDataId != null)))
+            wanted[0] = true
+            wanted[1] = true
+            wanted[2] = hasWa
+            wanted[3] = hasWab && (!hasWa || info?.whatsappBusinessDataId != null)
+            var total = 0
+            for (index in wanted.indices) if (wanted[index]) total++
+            val direct = RowLayout.shownButtons(total, buttonsFit)
+            var placed = 0
+            overflowCount = 0
+            for (index in actionButtons.indices) {
+                if (wanted[index] && placed < direct) {
+                    placed++
+                    Ui.gone(actionButtons[index], false)
+                } else {
+                    Ui.gone(actionButtons[index], true)
+                    if (wanted[index]) overflow[overflowCount++] = index
+                }
+            }
+            Ui.gone(moreButton, overflowCount == 0)
+            return RowLayout.buttonSlots(total, buttonsFit)
+        }
+
+        private fun showMore(anchor: View) {
+            val item = boundItem ?: return
+            val count = overflowCount
+            if (count == 0) return
+            val indices = IntArray(count) { overflow[it] }
+            val labels = Array(count) { context.getString(specs[indices[it]].label) }
+            AlertDialog.Builder(context)
+                .setTitle(item.label)
+                .setItems(labels) { _, which -> callbacks.onContactAction(item, specs[indices[which]].action, anchor) }
+                .show()
         }
     }
 

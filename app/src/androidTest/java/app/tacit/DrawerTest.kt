@@ -269,7 +269,7 @@ class DrawerTest {
         val roomy = firstRowHeight("comfortable")
         val tight = firstRowHeight("compact")
         assertEquals(64 * scale, roomy.toFloat(), 2f)
-        assertEquals(56 * scale, tight.toFloat(), 2f)
+        assertEquals(48 * scale, tight.toFloat(), 2f)
     }
 
     @Test

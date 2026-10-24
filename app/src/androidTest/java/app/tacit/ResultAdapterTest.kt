@@ -32,6 +32,10 @@ class ResultAdapterTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
 
+    private companion object {
+        const val WIDE = 1000
+    }
+
     private class Recorder : RowCallbacks {
         var primary: SearchItem? = null
         var secondary: SearchItem? = null
@@ -70,11 +74,28 @@ class ResultAdapterTest {
         SearchItem("misc", ItemKind.ACTION, "Something", "", payload = "x")
     )
 
-    private fun adapter(recorder: Recorder, messengers: Set<ContactAction>): ResultAdapter =
-        ResultAdapter(context, recorder, Ui.palette(context)).also {
+    private fun adapter(recorder: Recorder, messengers: Set<ContactAction>, widthDp: Int = WIDE): ResultAdapter =
+        ResultAdapter(context, recorder, Ui.palette(context), widthDp).also {
             it.installedMessengers = messengers
             it.submit(everything)
         }
+
+    private fun both() = setOf(ContactAction.WHATSAPP, ContactAction.WHATSAPP_BUSINESS)
+
+    private fun <T> withDensity(key: String, block: () -> T): T {
+        val saved = Graph.prefs.density
+        Graph.prefs.density = key
+        try {
+            return block()
+        } finally {
+            Graph.prefs.density = saved
+        }
+    }
+
+    private fun actionButtons(row: View): List<ImageView> = views(row).filterIsInstance<ImageView>().filter { it.tag is ContactAction }
+
+    private fun moreButton(row: View): ImageView =
+        views(row).filterIsInstance<ImageView>().first { it.contentDescription == context.getString(R.string.action_more) }
 
     private fun walk(view: View, visit: (View) -> Unit) {
         visit(view)
@@ -174,7 +195,7 @@ class ResultAdapterTest {
         val minimum = Ui.dp(context, 48)
         onMain {
             val row = adapter.getView(0, null, parent)
-            val buttons = views(row).filterIsInstance<ImageView>().filter { it.contentDescription != null }
+            val buttons = actionButtons(row)
             assertEquals(4, buttons.size)
             buttons.forEach {
                 assertTrue("button under 48 dp", it.layoutParams.width >= minimum && it.layoutParams.height >= minimum)
@@ -207,6 +228,159 @@ class ResultAdapterTest {
             val buttons = views(row).filterIsInstance<ImageView>().filter { it.tag is ContactAction }
             val visible = buttons.filter { effectivelyVisible(it) }.map { it.tag }
             assertEquals(listOf(ContactAction.CALL, ContactAction.MESSAGE), visible)
+        }
+    }
+
+    @Test
+    fun contactButtonsOverflowIntoMoreOnNarrowScreens() {
+        withDensity("comfortable") {
+            val expected = listOf(320 to 0, 360 to 1, 411 to 2, 600 to 4)
+            for ((width, direct) in expected) {
+                val adapter = adapter(Recorder(), both(), width)
+                val parent = FrameLayout(context)
+                onMain {
+                    val row = adapter.getView(0, null, parent)
+                    val shown = actionButtons(row).filter { effectivelyVisible(it) }
+                    assertEquals("direct buttons at $width dp", direct, shown.size)
+                    assertEquals("More at $width dp", direct < 4, effectivelyVisible(moreButton(row)))
+                    assertEquals(listOf(ContactAction.CALL, ContactAction.MESSAGE, ContactAction.WHATSAPP, ContactAction.WHATSAPP_BUSINESS).take(direct),
+                        shown.map { it.tag })
+                }
+            }
+        }
+    }
+
+    @Test
+    fun compactFitsOneMoreButtonThanComfortableOnTheSameScreen() {
+        withDensity("compact") {
+            val expected = listOf(320 to 1, 360 to 1, 411 to 2, 450 to 4)
+            for ((width, direct) in expected) {
+                val adapter = adapter(Recorder(), both(), width)
+                val parent = FrameLayout(context)
+                onMain {
+                    val row = adapter.getView(0, null, parent)
+                    assertEquals("direct buttons at $width dp", direct, actionButtons(row).count { effectivelyVisible(it) })
+                    assertEquals("More at $width dp", direct < 4, effectivelyVisible(moreButton(row)))
+                }
+            }
+        }
+    }
+
+    @Test
+    fun moreStaysHiddenWhenEverythingFitsAndForRowsWithoutActions() {
+        withDensity("compact") {
+            val adapter = adapter(Recorder(), emptySet(), 320)
+            val parent = FrameLayout(context)
+            onMain {
+                var row = adapter.getView(0, null, parent)
+                val more = moreButton(row)
+                assertFalse("two buttons fit on 320 dp in Compact", effectivelyVisible(more))
+                assertEquals(2, actionButtons(row).count { effectivelyVisible(it) })
+                row = adapter.getView(2, row, parent)
+                assertFalse(effectivelyVisible(more))
+                assertTrue(more.isClickable)
+                assertNotNull(more.drawable)
+                assertEquals(Ui.dp(context, 48), more.layoutParams.width)
+                assertEquals(Ui.dp(context, 48), more.layoutParams.height)
+            }
+        }
+    }
+
+    @Test
+    fun theOverflowFollowsTheScreenWidth() {
+        withDensity("comfortable") {
+            val adapter = adapter(Recorder(), both(), 600)
+            val parent = FrameLayout(context)
+            onMain {
+                val row = adapter.getView(0, null, parent)
+                assertEquals(4, actionButtons(row).count { effectivelyVisible(it) })
+                adapter.screenWidthDp = 320
+                adapter.getView(0, row, parent)
+                assertEquals(0, actionButtons(row).count { effectivelyVisible(it) })
+                assertTrue(effectivelyVisible(moreButton(row)))
+                adapter.screenWidthDp = 600
+                adapter.getView(0, row, parent)
+                assertEquals(4, actionButtons(row).count { effectivelyVisible(it) })
+                assertFalse(effectivelyVisible(moreButton(row)))
+            }
+        }
+    }
+
+    @Test
+    fun everyRowHasASpokenDescription() {
+        for (key in listOf("comfortable", "compact")) {
+            withDensity(key) {
+                val adapter = adapter(Recorder(), both())
+                val parent = FrameLayout(context)
+                onMain {
+                    var row = adapter.getView(0, null, parent)
+                    for (i in everything.indices) {
+                        row = adapter.getView(i, row, parent)
+                        assertTrue("row $i has no description at $key", !row.contentDescription.isNullOrEmpty())
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun comfortableStacksTheSubtitleAndCompactPutsItInline() {
+        for ((key, inline) in listOf("comfortable" to false, "compact" to true)) {
+            withDensity(key) {
+                val adapter = adapter(Recorder(), emptySet())
+                val parent = FrameLayout(context)
+                onMain {
+                    val row = adapter.getView(3, null, parent)
+                    val texts = views(row).filterIsInstance<TextView>().filter { it.text == "report.pdf" || it.text == "~/Documents" }
+                    assertEquals(2, texts.size)
+                    val title = texts.first { it.text == "report.pdf" }
+                    val subtitle = texts.first { it.text == "~/Documents" }
+                    assertSame(title.parent, subtitle.parent)
+                    val orientation = (title.parent as android.widget.LinearLayout).orientation
+                    assertEquals(if (inline) android.widget.LinearLayout.HORIZONTAL else android.widget.LinearLayout.VERTICAL, orientation)
+                    assertEquals(1, subtitle.maxLines)
+                    assertEquals(android.text.TextUtils.TruncateAt.END, subtitle.ellipsize)
+                    assertEquals(android.text.TextUtils.TruncateAt.END, title.ellipsize)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun theInlineSubtitleYieldsToTheContactName() {
+        withDensity("compact") {
+            val narrow = adapter(Recorder(), both(), 320)
+            val wide = adapter(Recorder(), emptySet(), 411)
+            val parent = FrameLayout(context)
+            onMain {
+                val crowded = narrow.getView(0, null, parent)
+                val number = views(crowded).filterIsInstance<TextView>().first { it.text == "+201001234567" }
+                assertFalse("the number leaves room for the name", effectivelyVisible(number))
+                val roomy = wide.getView(3, null, parent)
+                val folder = views(roomy).filterIsInstance<TextView>().first { it.text == "~/Documents" }
+                assertTrue(effectivelyVisible(folder))
+                assertTrue(folder.maxWidth <= Ui.dp(context, 411 * 40 / 100))
+                assertTrue(folder.maxWidth > 0)
+            }
+        }
+    }
+
+    @Test
+    fun rowsKeepTheirMinimumHeightAndIconsRenderAtTheDensityIconSize() {
+        for (density in app.tacit.core.RowDensity.entries) {
+            withDensity(density.key) {
+                val adapter = adapter(Recorder(), emptySet())
+                val parent = FrameLayout(context)
+                onMain {
+                    val row = adapter.getView(2, null, parent) as android.widget.LinearLayout
+                    assertEquals(Ui.dp(context, density.rowDp), row.minimumHeight)
+                    val slot = row.getChildAt(0) as FrameLayout
+                    assertEquals(Ui.dp(context, density.slotDp), slot.layoutParams.width)
+                    val appIcon = slot.getChildAt(2) as ImageView
+                    val drawn = slot.layoutParams.width - appIcon.paddingLeft - appIcon.paddingRight
+                    assertTrue("icon area $drawn px", kotlin.math.abs(drawn - Ui.dp(context, density.iconDp)) <= 2)
+                }
+            }
         }
     }
 

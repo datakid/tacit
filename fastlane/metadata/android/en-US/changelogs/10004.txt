@@ -1,0 +1,5 @@
+Density build.
+• Compact is now a dense row; pick the row size on the first screen
+• Contact buttons that don't fit move into a More button
+• Screen reader labels for the letter strip and drawer tabs
+• Search field and lists follow the row size

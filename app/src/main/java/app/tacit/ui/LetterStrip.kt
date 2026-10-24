@@ -8,7 +8,7 @@ import android.util.TypedValue
 import android.view.MotionEvent
 import android.view.View
 
-class LetterStrip(context: Context, ink: Int) : View(context) {
+class LetterStrip(context: Context, ink: Int, textSp: Float = 11f) : View(context) {
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val minCell = Ui.dp(context, 15).toFloat()
@@ -21,9 +21,9 @@ class LetterStrip(context: Context, ink: Int) : View(context) {
     init {
         paint.color = ink
         paint.textAlign = Paint.Align.CENTER
-        paint.textSize = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 11f, context.resources.displayMetrics)
+        paint.textSize = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, textSp, context.resources.displayMetrics)
         paint.typeface = Typeface.create(Typeface.DEFAULT, 500, false)
-        importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
+        importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_YES
     }
 
     fun setLetters(value: CharArray) {

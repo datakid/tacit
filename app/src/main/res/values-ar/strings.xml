@@ -11,6 +11,7 @@
     <string name="action_message">رسالة</string>
     <string name="action_whatsapp">واتساب</string>
     <string name="action_whatsapp_business">واتساب للأعمال</string>
+    <string name="action_more">إجراءات أخرى</string>
 
     <string name="menu_alias">الأسماء المستعارة</string>
     <string name="menu_pin">تثبيت</string>
@@ -108,6 +109,7 @@
     <string name="drawer_button">التطبيقات</string>
     <string name="drawer_settings">تبويب الإعدادات في الدرج</string>
     <string name="drawer_tab_settings">إعدادات النظام</string>
+    <string name="drawer_index">فهرس الحروف</string>
     <string name="bar_bottom">شريط البحث في الأسفل</string>
     <string name="show_clock">الساعة</string>
     <string name="show_date">التاريخ</string>
@@ -204,6 +206,7 @@
     <string name="welcome_body">اكتب للعثور على التطبيقات والإعدادات والإجراءات السريعة. جهات الاتصال والملفات والحافظة متوقفة حتى تفعّلها من الإعدادات. لا يملك Tacit أي وصول إلى الإنترنت.</string>
     <string name="welcome_home">اجعله شاشتي الرئيسية</string>
     <string name="welcome_ok">فهمت</string>
+    <string name="welcome_rows">الصفوف</string>
 
     <string name="shortcut_settings">الإعدادات</string>
     <string name="shortcut_aliases">الأسماء المستعارة</string>

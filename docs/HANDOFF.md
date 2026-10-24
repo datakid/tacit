@@ -55,17 +55,17 @@ Tacit is at 1.0.1-beta (1.0.0 plus the safety net for 1.1). CI builds it, runs t
 - [ ] Alias table: batch edit, CSV round trip, a shared alias shows every item
 - [ ] Quicklinks: one of each type, pin to home screen, a deleted target opens its editor
 - [ ] Quick actions: `timer 10 tea`, `alarm 7:30`, `event dentist tomorrow 3pm` open the clock and calendar apps with the right values
-- [ ] Row size: Comfortable and Compact; contact rows with both WhatsApps on a narrow phone (four buttons can truncate the name)
+- [ ] Row size: Comfortable and Compact (Compact is the new dense row with the subtitle inline); pick it on the first-run card and in Settings; contact rows with both WhatsApps on a narrow phone show More and the name stays readable; Compact next to Comfortable in Settings, Aliases, Snippets and Quicklinks; large font and Arabic in both
 - [ ] Drawer: letter strip on a real thumb, fling speed and icon loading on a budget phone, System settings tab
 - [ ] Work profile and Private Space apps launch
-- [ ] TalkBack labels (not run yet), large font, RTL (Arabic system language)
+- [ ] TalkBack: the letter strip says "Alphabet index", the drawer tabs say which one is selected, the More button says "More actions"; it has not been run with TalkBack on a phone (the labels are checked by `AccessibilityLabelsTest`)
+- [ ] Large font (1.3) and RTL (Arabic system language) on the search screen in both row sizes; the screenshot matrix in the CI artifacts shows all sixteen combinations
 - [ ] Compare cold start with KISS: `adb shell am start -W -n app.tacit/.ui.SearchActivity` against `fr.neamar.kiss/.MainActivity`, 10 runs each after `adb shell am force-stop`
 - [ ] Run the benchmark module on a flagship and a budget phone and record the numbers
 
 ## Later (owner notes)
 - Files tab in the drawer (decision 58): it waited for scan speed and a visible scanning state; both shipped in 1.0.3-beta.
 - Find the cause of the `SettingsApplyTest` flake (1.0.1-beta: not reproduced in ten isolated runs, idle waits added, decision 69).
-- Narrow phones: the four contact buttons can truncate the name.
 - Per-app actions like KISS (2026-10-22): a browser's new tab and private tab, and the shortcuts other apps declare. Tacit already lists every dynamic, manifest and pinned shortcut of other apps as a row while it is the default home app (`AppSource.loadShortcuts`; Android hides them otherwise, see limits.md), but a shortcut row matches only its own label, so typing the app's name does not bring them up. Next: let an app's name match its shortcuts, show them in the app row's long-press menu, and check on a phone which apps expose any. Screens that an app does not declare as shortcuts need the activity explorer planned for M12.
 - Main-thread disk work that is left (1.0.2-beta): `Prefs` loads its preferences inside `Graph.init`, `Welcome.pending` checks its marker file once per process, and the quicklink editor saves, deletes and rechecks targets on the main thread (the stores write their files synchronously, and several device tests read them straight after the click). Moving the editor to the worker needs an asynchronous store API first.
 - GitHub Actions: `ubuntu-latest` moves to Ubuntu 26 on 2026-10-19; the Node 20 action deprecation also needs a look (1.0.1-beta: runners pinned to `ubuntu-24.04`, actions on node24 majors, `setup-gradle` with `cache-provider: basic`).

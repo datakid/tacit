@@ -49,6 +49,7 @@ import app.tacit.core.ItemKind
 import app.tacit.core.ParsedQuery
 import app.tacit.core.PathNames
 import app.tacit.core.ResultComposer
+import app.tacit.core.RowDensity
 import app.tacit.core.Scope
 import app.tacit.core.SearchItem
 import app.tacit.files.FileHit
@@ -156,6 +157,7 @@ class SearchActivity : Activity(), RowCallbacks {
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
+        if (::adapter.isInitialized) adapter.screenWidthDp = newConfig.screenWidthDp
         if (look != null) refreshLook()
     }
 
@@ -169,6 +171,7 @@ class SearchActivity : Activity(), RowCallbacks {
         tabs = null
         welcomeCard = null
         val palette = Ui.palette(this)
+        val density = RowDensity.of(current.density)
         if (current.wallpaper) {
             window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
             window.setFormat(PixelFormat.TRANSLUCENT)
@@ -244,7 +247,8 @@ class SearchActivity : Activity(), RowCallbacks {
         if (current.drawer) {
             val host = FrameLayout(this)
             host.addView(list, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
-            val letterStrip = LetterStrip(this, palette.muted).apply {
+            val letterStrip = LetterStrip(this, palette.muted, density.stripSp).apply {
+                contentDescription = getString(R.string.drawer_index)
                 visibility = View.GONE
                 onPick = ::pickLetter
                 onActive = ::showBubble
@@ -346,7 +350,8 @@ class SearchActivity : Activity(), RowCallbacks {
             }
             background = null
             textAlignment = View.TEXT_ALIGNMENT_VIEW_START
-            setPaddingRelative(Ui.dp(context, 12), Ui.dp(context, 14), Ui.dp(context, 8), Ui.dp(context, 14))
+            setPaddingRelative(Ui.dp(context, 12), Ui.dp(context, density.fieldPadDp), Ui.dp(context, 8), Ui.dp(context, density.fieldPadDp))
+            minHeight = Ui.dp(context, 48)
             contentDescription = getString(R.string.search_hint)
             setOnEditorActionListener { _, actionId, event ->
                 val enter = actionId == EditorInfo.IME_ACTION_GO || actionId == EditorInfo.IME_ACTION_DONE ||
@@ -373,7 +378,7 @@ class SearchActivity : Activity(), RowCallbacks {
             setPaddingRelative(Ui.dp(context, 14), 0, Ui.dp(context, 4), 0)
             addView(searchIcon, LinearLayout.LayoutParams(Ui.dp(context, 24), Ui.dp(context, 24)))
             addView(input, Ui.weight())
-            addView(clearButton, LinearLayout.LayoutParams(Ui.dp(context, 44), Ui.dp(context, 44)))
+            addView(clearButton, LinearLayout.LayoutParams(Ui.dp(context, 48), Ui.dp(context, 48)))
         }
 
         val settingsButton = ImageView(this).apply {
@@ -431,8 +436,20 @@ class SearchActivity : Activity(), RowCallbacks {
             ellipsize = null
             setPadding(0, Ui.dp(context, 6), 0, Ui.dp(context, 12))
         })
-        val buttons = Ui.row(this)
         val gap = Ui.dp(this, 8)
+        card.addView(Ui.text(this, getString(R.string.welcome_rows), 13f, palette.muted).apply {
+            textAlignment = View.TEXT_ALIGNMENT_VIEW_START
+            setPadding(0, 0, 0, Ui.dp(context, 4))
+        })
+        val chosen = RowDensity.of(Graph.prefs.density)
+        val rows = Ui.row(this)
+        for ((index, option) in RowDensity.entries.withIndex()) {
+            rows.addView(densityChip(palette, option, option == chosen), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply {
+                if (index < RowDensity.entries.size - 1) marginEnd = gap
+            })
+        }
+        card.addView(rows, Ui.matchWrap().apply { bottomMargin = Ui.dp(this@SearchActivity, 12) })
+        val buttons = Ui.row(this)
         if (!isDefaultHome()) {
             buttons.addView(welcomeButton(palette, R.string.welcome_home) {
                 endWelcome()
@@ -442,6 +459,27 @@ class SearchActivity : Activity(), RowCallbacks {
         buttons.addView(welcomeButton(palette, R.string.welcome_ok) { endWelcome() })
         card.addView(buttons)
         return card
+    }
+
+    private fun densityChip(palette: Palette, option: RowDensity, chosen: Boolean): TextView {
+        val label = getString(if (option == RowDensity.COMPACT) R.string.row_compact else R.string.row_comfortable)
+        return Ui.chip(this, palette, label) { chooseDensity(option) }.apply {
+            id = if (option == RowDensity.COMPACT) R.id.welcome_rows_compact else R.id.welcome_rows_comfortable
+            minHeight = Ui.dp(context, 48)
+            isSelected = chosen
+            background = android.graphics.drawable.GradientDrawable().apply {
+                cornerRadius = Ui.dp(context, 16).toFloat()
+                setStroke(Ui.dp(context, if (chosen) 2 else 1), if (chosen) palette.foreground else palette.line)
+            }
+        }
+    }
+
+    private fun chooseDensity(option: RowDensity) {
+        if (RowDensity.of(Graph.prefs.density) == option) return
+        Graph.prefs.density = option.key
+        Graph.icons.clear()
+        refreshLook()
+        showKeyboard()
     }
 
     private fun welcomeButton(palette: Palette, label: Int, onClick: () -> Unit): TextView =
@@ -596,6 +634,7 @@ class SearchActivity : Activity(), RowCallbacks {
 
     private fun makeTab(label: Int, tab: DrawerTab): TextView = TextView(this).apply {
         text = getString(label)
+        contentDescription = getString(label)
         textSize = 15f
         gravity = Gravity.CENTER
         typeface = Typeface.create(Typeface.DEFAULT, 500, false)

@@ -12,3 +12,4 @@ These come from Android itself. Tacit doesn't work around them with root, hacks 
 - **No internet**: no currency rates, no search suggestions, no update checks.
 - **WhatsApp**: going straight to a chat needs WhatsApp's contact entry or a number with a country code (set a default country code in Settings).
 - **First install over a beta**: the stable release is signed with the owner's key, so a phone with a beta (debug-signed) build has to uninstall it first. Settings are not carried over; export them from Settings before uninstalling.
+- **Narrow screens**: contact buttons that don't leave the name 140 dp move into a More button. On a 360 dp phone with WhatsApp installed, Call stays and Message and WhatsApp go into More.

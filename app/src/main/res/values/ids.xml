@@ -4,4 +4,6 @@
     <item name="welcome_card" type="id" />
     <item name="welcome_ok" type="id" />
     <item name="welcome_home" type="id" />
+    <item name="welcome_rows_comfortable" type="id" />
+    <item name="welcome_rows_compact" type="id" />
 </resources>

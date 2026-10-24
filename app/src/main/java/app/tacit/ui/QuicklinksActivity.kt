@@ -6,6 +6,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.text.InputType
+import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.BaseAdapter
@@ -20,6 +21,7 @@ import app.tacit.actions.PinShortcut
 import app.tacit.core.ItemKind
 import app.tacit.core.QuicklinkRules
 import app.tacit.core.QuicklinkType
+import app.tacit.core.RowDensity
 import app.tacit.core.TargetState
 import app.tacit.data.AliasText
 import app.tacit.data.Quicklink
@@ -59,6 +61,9 @@ class QuicklinksActivity : Activity() {
         root.addView(tools)
         emptyView = Ui.text(this, getString(R.string.ql_empty), 13f, palette.muted)
         root.addView(emptyView)
+        val density = RowDensity.of(Graph.prefs.density)
+        val rowPad = Ui.dp(this, density.listPadDp)
+        val rowMin = Ui.dp(this, density.listRowDp)
         adapter = object : BaseAdapter() {
             override fun getCount() = links.size
             override fun getItem(position: Int) = links[position]
@@ -66,7 +71,9 @@ class QuicklinksActivity : Activity() {
             override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
                 val link = links[position]
                 val column = Ui.column(this@QuicklinksActivity)
-                column.setPadding(0, gap, 0, gap)
+                column.setPadding(0, rowPad, 0, rowPad)
+                column.minimumHeight = rowMin
+                column.gravity = Gravity.CENTER_VERTICAL
                 column.addView(Ui.text(this@QuicklinksActivity, link.name, 15f, palette.foreground, bold = true))
                 column.addView(Ui.text(this@QuicklinksActivity, summary(link, states[link.id] ?: TargetState.OK), 13f, palette.muted))
                 column.setOnClickListener { edit(link) }
