@@ -110,6 +110,15 @@
             android:taskAffinity="" android:excludeFromRecents="true" android:noHistory="true"
             android:theme="@android:style/Theme.NoDisplay" />
 
+        <activity android:name=".actions.PinRequestActivity" android:exported="true"
+            android:taskAffinity="" android:excludeFromRecents="true"
+            android:theme="@style/Theme.Tacit.Translucent">
+            <intent-filter>
+                <action android:name="android.content.pm.action.CONFIRM_PIN_SHORTCUT" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
         <activity android:name=".actions.ExportActivity" android:exported="false"
             android:taskAffinity="" android:excludeFromRecents="true"
             android:theme="@android:style/Theme.Translucent.NoTitleBar" />

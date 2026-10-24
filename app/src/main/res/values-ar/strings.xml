@@ -89,6 +89,8 @@
     <string name="ql_pin_removed">حُذف هذا الرابط السريع</string>
     <string name="menu_create_quicklink">إنشاء رابط سريع</string>
     <string name="menu_add_home">إضافة إلى الشاشة الرئيسية</string>
+    <string name="pin_add">إضافة إلى Tacit</string>
+    <string name="menu_unpin_shortcut">إزالة من Tacit</string>
     <string name="snippet_trigger">الاختصار</string>
     <string name="snippet_title">العنوان</string>
     <string name="snippet_body">النص</string>

@@ -2,6 +2,7 @@ package app.tacit.actions
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.LauncherApps
 import android.content.pm.ShortcutInfo
 import android.content.pm.ShortcutManager
 import android.graphics.Bitmap
@@ -19,7 +20,8 @@ object PinShortcut {
     private const val INSET = 130
 
     fun supported(context: Context): Boolean =
-        context.getSystemService(ShortcutManager::class.java)?.isRequestPinShortcutSupported == true
+        context.getSystemService(ShortcutManager::class.java)?.isRequestPinShortcutSupported == true &&
+            context.getSystemService(LauncherApps::class.java)?.hasShortcutHostPermission() != true
 
     fun info(context: Context, link: Quicklink): ShortcutInfo {
         val intent = Intent(context, QuicklinkRunActivity::class.java)

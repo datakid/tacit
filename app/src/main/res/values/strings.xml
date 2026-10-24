@@ -91,6 +91,8 @@
     <string name="ql_pin_removed">This quicklink was deleted</string>
     <string name="menu_create_quicklink">Create quicklink</string>
     <string name="menu_add_home">Add to home screen</string>
+    <string name="pin_add">Add to Tacit</string>
+    <string name="menu_unpin_shortcut">Remove from Tacit</string>
     <string name="snippet_trigger">Trigger</string>
     <string name="snippet_title">Title</string>
     <string name="snippet_body">Text</string>

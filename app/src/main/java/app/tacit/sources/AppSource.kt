@@ -23,6 +23,9 @@ class AppSource(private val context: Context) {
     @Volatile
     private var shortcuts: List<SearchItem> = emptyList()
 
+    @Volatile
+    private var pinnedKeys: Set<String> = emptySet()
+
     private var registered = false
 
     private fun packagesChanged(names: Array<out String>) {
@@ -50,6 +53,29 @@ class AppSource(private val context: Context) {
         return if (current.isEmpty()) null else current.any { it.payload == payload }
     }
 
+    fun labelFor(packageName: String): String =
+        cached.firstOrNull { it.payload.startsWith("$packageName/") }?.label ?: packageName
+
+    fun isPinnedShortcut(key: String): Boolean = key in pinnedKeys
+
+    fun unpinShortcut(payload: String) {
+        val parts = payload.split('|')
+        if (parts.size < 3) return
+        val pkg = parts[0]
+        val id = parts[1]
+        val user = userFor(parts[2].toLongOrNull())
+        Graph.worker.post {
+            val query = LauncherApps.ShortcutQuery()
+                .setPackage(pkg)
+                .setQueryFlags(LauncherApps.ShortcutQuery.FLAG_MATCH_PINNED)
+            val pinned = runCatching { launcherApps.getShortcuts(query, user) }.getOrNull()
+            if (pinned != null) {
+                runCatching { launcherApps.pinShortcuts(pkg, pinned.map { it.id }.filter { it != id }, user) }
+                Graph.requestRefresh(RefreshSources.APPS)
+            }
+        }
+    }
+
     fun reload() {
         if (!registered) {
             launcherApps.registerCallback(callback, Graph.worker)
@@ -71,7 +97,7 @@ class AppSource(private val context: Context) {
             }
         }
         cached = result.sortedBy { it.label.lowercase() }
-        shortcuts = loadShortcuts()
+        loadShortcuts()
     }
 
     private fun profileLabel(user: UserHandle): String {
@@ -84,28 +110,31 @@ class AppSource(private val context: Context) {
         return "Work"
     }
 
-    private fun loadShortcuts(): List<SearchItem> {
-        if (!launcherApps.hasShortcutHostPermission()) return emptyList()
-        val result = ArrayList<SearchItem>()
-        val query = LauncherApps.ShortcutQuery().setQueryFlags(
-            LauncherApps.ShortcutQuery.FLAG_MATCH_DYNAMIC or
-                LauncherApps.ShortcutQuery.FLAG_MATCH_MANIFEST or
-                LauncherApps.ShortcutQuery.FLAG_MATCH_PINNED
-        )
-        for (user in launcherApps.profiles) {
-            if (userManager.isQuietModeEnabled(user)) continue
-            val serial = userManager.getSerialNumberForUser(user)
-            val list = runCatching { launcherApps.getShortcuts(query, user) }.getOrNull() ?: continue
-            for (shortcut in list) {
-                if (!shortcut.isEnabled) continue
-                val label = (shortcut.longLabel ?: shortcut.shortLabel)?.toString() ?: continue
-                val appLabel = cached.firstOrNull { it.payload.startsWith(shortcut.`package` + "/") }?.label ?: shortcut.`package`
-                val key = "shortcut:${shortcut.`package`}:${shortcut.id}:$serial"
-                result.add(SearchItem(key, ItemKind.ACTION, label, appLabel, listOfNotNull(shortcut.shortLabel?.toString()),
-                    "${shortcut.`package`}|${shortcut.id}|$serial"))
+    private fun loadShortcuts() {
+        val items = ArrayList<SearchItem>()
+        val pinned = HashSet<String>()
+        if (launcherApps.hasShortcutHostPermission()) {
+            val query = LauncherApps.ShortcutQuery().setQueryFlags(
+                LauncherApps.ShortcutQuery.FLAG_MATCH_DYNAMIC or
+                    LauncherApps.ShortcutQuery.FLAG_MATCH_MANIFEST or
+                    LauncherApps.ShortcutQuery.FLAG_MATCH_PINNED
+            )
+            for (user in launcherApps.profiles) {
+                if (userManager.isQuietModeEnabled(user)) continue
+                val serial = userManager.getSerialNumberForUser(user)
+                val list = runCatching { launcherApps.getShortcuts(query, user) }.getOrNull() ?: continue
+                for (shortcut in list) {
+                    if (!shortcut.isEnabled) continue
+                    val label = (shortcut.longLabel ?: shortcut.shortLabel)?.toString() ?: continue
+                    val key = "shortcut:${shortcut.`package`}:${shortcut.id}:$serial"
+                    items.add(SearchItem(key, ItemKind.ACTION, label, labelFor(shortcut.`package`), listOfNotNull(shortcut.shortLabel?.toString()),
+                        "${shortcut.`package`}|${shortcut.id}|$serial"))
+                    if (shortcut.isPinned && !shortcut.isDynamic && !shortcut.isDeclaredInManifest) pinned.add(key)
+                }
             }
         }
-        return result
+        shortcuts = items
+        pinnedKeys = pinned
     }
 
     fun launch(payload: String, bounds: android.graphics.Rect?) {

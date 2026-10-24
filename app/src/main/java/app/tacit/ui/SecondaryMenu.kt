@@ -84,6 +84,8 @@ object SecondaryMenu {
                         Toast.makeText(activity, R.string.ql_pin_unsupported, Toast.LENGTH_LONG).show()
                     }
                 }
+            } else if (Graph.apps.isPinnedShortcut(item.key)) {
+                add(R.string.menu_unpin_shortcut) { Graph.apps.unpinShortcut(item.payload) }
             }
             ItemKind.CALCULATOR, ItemKind.WEB -> add(R.string.menu_copy) {
                 Graph.clipboard.copy(if (item.kind == ItemKind.WEB) item.label else item.payload, false)
