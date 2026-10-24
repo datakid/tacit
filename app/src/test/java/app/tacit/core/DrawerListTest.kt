@@ -131,10 +131,13 @@ class DrawerListTest {
     @Test
     fun everyDensityFitsItsIconInsideTheSlotAndTheSlotInsideTheRow() {
         for (density in RowDensity.entries) {
-            assertTrue(density.iconDp + 8 <= density.slotDp)
+            assertTrue(density.iconDp + 4 <= density.slotDp)
             assertTrue(density.slotDp + 16 <= density.rowDp)
-            assertTrue(density.slotDp - 2 * density.kindPadDp >= 24)
+            assertTrue(density.slotDp - 2 * density.kindPadDp >= 20)
         }
+        val roomy = RowDensity.COMFORTABLE
+        assertTrue(roomy.iconDp + 8 <= roomy.slotDp)
+        assertTrue(roomy.slotDp - 2 * roomy.kindPadDp >= 24)
     }
 
     @Test

@@ -446,7 +446,7 @@ class SettingsActivity : Activity() {
 
     private fun rowView(label: String, value: String?): LinearLayout {
         val row = Ui.row(this)
-        row.minimumHeight = Ui.dp(this, 52)
+        row.minimumHeight = Ui.dp(this, RowDensity.of(prefs.density).listRowDp)
         row.isClickable = true
         row.isFocusable = true
         val texts = Ui.column(this)

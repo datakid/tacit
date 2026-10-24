@@ -196,6 +196,50 @@ class FirstRunTest {
         }
     }
 
+    private fun chosenRows(): Pair<Boolean, Boolean> {
+        var comfortable = false
+        var compact = false
+        scenario!!.onActivity {
+            comfortable = it.findViewById<View>(R.id.welcome_rows_comfortable)?.isSelected == true
+            compact = it.findViewById<View>(R.id.welcome_rows_compact)?.isSelected == true
+        }
+        return comfortable to compact
+    }
+
+    @Test
+    fun cardOffersTheRowSizeAndMarksTheCurrentOne() {
+        launch()
+        assertTrue(cardShown())
+        assertNotNull(device.wait(Until.findObject(By.text(context.getString(R.string.welcome_rows))), 5000))
+        assertNotNull(device.findObject(By.text(context.getString(R.string.row_comfortable))))
+        assertNotNull(device.findObject(By.text(context.getString(R.string.row_compact))))
+        assertEquals(true to false, chosenRows())
+    }
+
+    @Test
+    fun pickingCompactSavesItAndKeepsTheCard() {
+        launch()
+        val chip = device.wait(Until.findObject(By.text(context.getString(R.string.row_compact))), 5000)
+        assertNotNull("compact chip missing", chip)
+        chip.click()
+        waitFor("row size was not saved") { Graph.prefs.density == "compact" }
+        waitFor("the card did not come back marked") { cardShown() && chosenRows() == (false to true) }
+        assertFalse("welcome ended", marker.exists())
+        assertTrue(Welcome.pending(context))
+    }
+
+    @Test
+    fun pickingBothSizesInTurnEndsWithTheLastOne() {
+        launch()
+        device.wait(Until.findObject(By.text(context.getString(R.string.row_compact))), 5000)!!.click()
+        waitFor("compact not marked") { chosenRows() == (false to true) }
+        device.wait(Until.findObject(By.text(context.getString(R.string.row_comfortable))), 5000)!!.click()
+        waitFor("comfortable not marked") { chosenRows() == (true to false) }
+        assertEquals("comfortable", Graph.prefs.density)
+        assertTrue(cardShown())
+        assertFalse(marker.exists())
+    }
+
     @Test
     fun cardStaysGoneAfterTheScreenIsRecreated() {
         launch()

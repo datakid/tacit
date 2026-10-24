@@ -12,6 +12,7 @@ import android.view.ViewGroup
 import android.view.WindowInsets
 import android.widget.ListView
 import android.widget.ScrollView
+import android.widget.TextView
 import androidx.test.core.app.ActivityScenario
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.action.ViewActions.replaceText
@@ -100,6 +101,7 @@ class ScreenshotTest {
 
     @After
     fun tearDown() {
+        shell("settings put system font_scale 1.0")
         shell("wm size reset")
         shell("wm density reset")
         if (Build.VERSION.SDK_INT >= 33) {
@@ -236,4 +238,86 @@ class ScreenshotTest {
 
     @Test
     fun narrow() = capture("narrow", "light", arabic = false, typed = true, wide = false)
+
+    private fun waitFor(message: String, condition: () -> Boolean) {
+        val deadline = System.currentTimeMillis() + 15_000
+        while (!condition() && System.currentTimeMillis() < deadline) Thread.sleep(100)
+        assertTrue(message, condition())
+    }
+
+    private fun fontScaleIs(scale: Float): Boolean =
+        Math.abs(context.resources.configuration.fontScale - scale) < 0.01f
+
+    private fun findList(activity: Activity): ListView {
+        val queue = ArrayDeque<View>()
+        queue.add(activity.window.decorView)
+        while (queue.isNotEmpty()) {
+            val view = queue.removeFirst()
+            if (view is ListView) return view
+            if (view is ViewGroup) for (i in 0 until view.childCount) queue.add(view.getChildAt(i))
+        }
+        throw AssertionError("no list on the search screen")
+    }
+
+    private fun textViews(root: View, into: MutableList<TextView>) {
+        if (root is TextView) into.add(root)
+        if (root is ViewGroup) for (i in 0 until root.childCount) textViews(root.getChildAt(i), into)
+    }
+
+    private fun assertRowsStayUsable(activity: Activity, label: String) {
+        val list = findList(activity)
+        val minimum = Ui.dp(activity, 48)
+        assertTrue("$label: no rows on screen", list.childCount > 0)
+        for (i in 0 until list.childCount) {
+            val row = list.getChildAt(i)
+            val item = list.adapter.getItem(list.firstVisiblePosition + i) as SearchItem
+            assertTrue("$label: row '${item.label}' is ${row.height} px, needs $minimum", row.height >= minimum)
+            val texts = ArrayList<TextView>()
+            textViews(row, texts)
+            val title = texts.first { it.text.toString() == item.label }
+            val layout = title.layout
+            assertTrue("$label: '${item.label}' has no layout", layout != null)
+            assertTrue("$label: '${item.label}' is only an ellipsis", layout.getEllipsisCount(0) < title.text.length)
+        }
+    }
+
+    private fun matrix(density: String, arabic: Boolean) {
+        Graph.prefs.theme = "light"
+        Graph.prefs.density = density
+        shell("wm size 1080x2400")
+        shell("wm density 420")
+        waitFor("the display did not change size") { device.displayWidth == 1080 }
+        if (arabic) {
+            assertTrue("Arabic captures need Android 13 or newer", Build.VERSION.SDK_INT >= 33)
+            context.getSystemService(LocaleManager::class.java).applicationLocales = LocaleList.forLanguageTags("ar")
+        }
+        for (scale in listOf(1.0f, 1.3f)) {
+            shell("settings put system font_scale $scale")
+            waitFor("font scale $scale was not applied") { fontScaleIs(scale) }
+            for (bottom in listOf(false, true)) {
+                Graph.prefs.barAtBottom = bottom
+                val label = "matrix-$density-${if (bottom) "bottom" else "top"}-${if (arabic) "rtl" else "ltr"}-font$scale"
+                ActivityScenario.launch(SearchActivity::class.java).use { scenario ->
+                    settle()
+                    shoot(label)
+                    scenario.onActivity { activity ->
+                        assertTrue("$label: the screen did not take the font scale", Math.abs(activity.resources.configuration.fontScale - scale) < 0.01f)
+                        if (density == "compact" && scale == 1.3f) assertRowsStayUsable(activity, label)
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun matrixComfortableLtr() = matrix("comfortable", arabic = false)
+
+    @Test
+    fun matrixComfortableRtl() = matrix("comfortable", arabic = true)
+
+    @Test
+    fun matrixCompactLtr() = matrix("compact", arabic = false)
+
+    @Test
+    fun matrixCompactRtl() = matrix("compact", arabic = true)
 }

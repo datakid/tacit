@@ -18,6 +18,7 @@ import app.tacit.Graph
 import app.tacit.R
 import app.tacit.core.AliasRules
 import app.tacit.core.ItemKind
+import app.tacit.core.RowDensity
 import app.tacit.core.Normalizer
 import app.tacit.core.PathNames
 import app.tacit.core.SearchItem
@@ -275,6 +276,7 @@ class AliasesActivity : Activity() {
         init {
             val pad = Ui.dp(this@AliasesActivity, 10)
             root.setPadding(0, pad / 2, 0, pad / 2)
+            root.minimumHeight = Ui.dp(this@AliasesActivity, RowDensity.of(Graph.prefs.density).listRowDp)
             root.tag = this
             name.textAlignment = View.TEXT_ALIGNMENT_VIEW_START
             field.textAlignment = View.TEXT_ALIGNMENT_VIEW_START

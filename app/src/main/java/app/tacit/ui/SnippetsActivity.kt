@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
+import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.BaseAdapter
@@ -13,6 +14,7 @@ import android.widget.ListView
 import app.tacit.Graph
 import app.tacit.R
 import app.tacit.core.RefreshSources
+import app.tacit.core.RowDensity
 import app.tacit.data.Csv
 import app.tacit.data.Snippet
 
@@ -45,6 +47,9 @@ class SnippetsActivity : Activity() {
         })
         root.addView(tools)
         root.addView(Ui.text(this, getString(R.string.snippet_placeholders), 12f, palette.muted).apply { maxLines = 3 })
+        val density = RowDensity.of(Graph.prefs.density)
+        val rowPad = Ui.dp(this, density.listPadDp)
+        val rowMin = Ui.dp(this, density.listRowDp)
         adapter = object : BaseAdapter() {
             override fun getCount() = snippets.size
             override fun getItem(position: Int) = snippets[position]
@@ -52,7 +57,9 @@ class SnippetsActivity : Activity() {
             override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
                 val snippet = snippets[position]
                 val column = Ui.column(this@SnippetsActivity)
-                column.setPadding(0, gap, 0, gap)
+                column.setPadding(0, rowPad, 0, rowPad)
+                column.minimumHeight = rowMin
+                column.gravity = Gravity.CENTER_VERTICAL
                 val head = listOf(snippet.trigger, snippet.title).filter { it.isNotEmpty() }.joinToString(" · ").ifEmpty { "—" }
                 column.addView(Ui.text(this@SnippetsActivity, head, 15f, palette.foreground, bold = true))
                 column.addView(Ui.text(this@SnippetsActivity, snippet.body.replace('\n', ' '), 13f, palette.muted))

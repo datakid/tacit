@@ -9,7 +9,7 @@ derived from Lucide (https://lucide.dev), version 1.55.0 of the lucide-static
 package. They were converted to Android VectorDrawables with a 1.75 dp stroke.
 The icons used are: settings, sliders-horizontal, file, folder, quote,
 clipboard, calculator, globe, zap, link, phone, message-square, message-circle,
-briefcase, search and x. The WhatsApp and WhatsApp Business icons are
+briefcase, search, x and ellipsis. The WhatsApp and WhatsApp Business icons are
 original compositions of Lucide's message-circle with phone and briefcase.
 
 Lucide is licensed under the ISC License. Some of the icons above derive from

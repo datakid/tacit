@@ -12,6 +12,7 @@
     <string name="action_message">Message</string>
     <string name="action_whatsapp">WhatsApp</string>
     <string name="action_whatsapp_business">WhatsApp Business</string>
+    <string name="action_more">More actions</string>
 
     <string name="menu_alias">Aliases</string>
     <string name="menu_pin">Pin</string>
@@ -111,6 +112,7 @@
     <string name="drawer_button">Apps</string>
     <string name="drawer_settings">Settings tab in drawer</string>
     <string name="drawer_tab_settings">System settings</string>
+    <string name="drawer_index">Alphabet index</string>
     <string name="bar_bottom">Search bar at bottom</string>
     <string name="show_clock">Clock</string>
     <string name="show_date">Date</string>
@@ -207,6 +209,7 @@
     <string name="welcome_body">Type to find apps, settings and quick actions. Contacts, files and clipboard stay off until you turn them on in Settings. Tacit has no internet access.</string>
     <string name="welcome_home">Make it my home</string>
     <string name="welcome_ok">Got it</string>
+    <string name="welcome_rows">Rows</string>
 
     <string name="shortcut_settings">Settings</string>
     <string name="shortcut_aliases">Aliases</string>
