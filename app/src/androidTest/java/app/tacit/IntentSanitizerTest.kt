@@ -192,6 +192,13 @@ class IntentSanitizerTest {
         assertEquals(stored, IntentSanitizer.canonical(spelled, own))
     }
 
+    private fun legacyResult(shortcut: Intent?, name: String?): Intent {
+        val data = Intent()
+        if (shortcut != null) data.putExtra(Intent.EXTRA_SHORTCUT_INTENT, shortcut)
+        if (name != null) data.putExtra(Intent.EXTRA_SHORTCUT_NAME, name)
+        return data
+    }
+
     @Test
     fun aLegacyShortcutResultBecomesACustomIntentDraft() {
         val draft = LegacyShortcuts.draft(context, legacyResult(view("https://example.com/a"), " Site "), "Tasker")!!
