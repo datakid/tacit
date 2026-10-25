@@ -284,9 +284,14 @@ class QuicklinksActivity : Activity() {
         }
         val help = Ui.text(this, getString(R.string.ql_url_help), 12f, palette.muted).apply { maxLines = 3 }
         val choose = Ui.chip(this, palette, getString(chooseLabel(type))) {}
-        val intentForm = IntentForm(this, palette, existing?.takeIf { it.type == QuicklinkType.INTENT }?.let {
+        val intentBox = Ui.column(this)
+        var intentForm: IntentForm? = null
+        fun intent(): IntentForm = intentForm ?: IntentForm(this, palette, existing?.takeIf { it.type == QuicklinkType.INTENT }?.let {
             IntentSanitizer.specOfTarget(it.target, own)
-        }) { verified = false }
+        }) { verified = false }.also {
+            intentForm = it
+            intentBox.addView(it.view)
+        }
         val tryChip = Ui.chip(this, palette, getString(R.string.ql_try)) {}
         val iconChip = Ui.chip(this, palette, "") {}
         val state = if (existing != null) states[existing.id] ?: TargetState.OK else TargetState.OK
@@ -305,7 +310,8 @@ class QuicklinksActivity : Activity() {
             Ui.gone(url, type != QuicklinkType.URL)
             Ui.gone(help, type != QuicklinkType.URL)
             Ui.gone(choose, type == QuicklinkType.URL || type == QuicklinkType.INTENT)
-            Ui.gone(intentForm.view, type != QuicklinkType.INTENT)
+            if (type == QuicklinkType.INTENT) intent()
+            Ui.gone(intentBox, type != QuicklinkType.INTENT)
             Ui.gone(tryChip, !(type == QuicklinkType.INTENT || (type == QuicklinkType.ACTIVITY && picked.isNotEmpty())))
             val shown = if (picked.isEmpty() || pickedLabel.isEmpty()) getString(chooseLabel(type)) else pickedLabel
             choose.text = shown
@@ -326,7 +332,7 @@ class QuicklinksActivity : Activity() {
         }
         tryChip.setOnClickListener {
             val intent = if (type == QuicklinkType.INTENT) {
-                val spec = intentForm.spec()
+                val spec = intent().spec()
                 val problems = spec.validate(own)
                 if (problems.isNotEmpty()) {
                     Toast.makeText(this, IntentForm.message(problems[0]), Toast.LENGTH_LONG).show()
@@ -395,7 +401,7 @@ class QuicklinksActivity : Activity() {
         })
         form.addView(url)
         form.addView(help)
-        form.addView(intentForm.view)
+        form.addView(intentBox)
         form.addView(choose, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
             topMargin = gap
         })
@@ -449,7 +455,7 @@ class QuicklinksActivity : Activity() {
                 target = normalized
                 detail = ""
             } else if (type == QuicklinkType.INTENT) {
-                val spec = intentForm.spec()
+                val spec = intent().spec()
                 val problems = spec.validate(own)
                 if (problems.isNotEmpty()) {
                     Toast.makeText(this, IntentForm.message(problems[0]), Toast.LENGTH_LONG).show()
