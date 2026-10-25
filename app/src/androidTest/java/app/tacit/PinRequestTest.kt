@@ -173,9 +173,12 @@ class PinRequestTest {
 
     @Test
     fun shortcutsDeclaredByAnAppCannotBeRemoved() {
-        val declared = Graph.apps.items().filter { it.kind == ItemKind.ACTION && it.payload.startsWith("${context.packageName}|settings|") }
-        assertTrue("manifest shortcut missing", declared.isNotEmpty())
-        for (item in declared) assertFalse(Graph.apps.isPinnedShortcut(item.key))
+        fun declared() = Graph.apps.items().filter { it.kind == ItemKind.ACTION && it.payload.startsWith("${context.packageName}|settings|") }
+        waitFor("manifest shortcut missing") {
+            refresh()
+            declared().isNotEmpty()
+        }
+        for (item in declared()) assertFalse(Graph.apps.isPinnedShortcut(item.key))
     }
 
     @Test
