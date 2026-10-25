@@ -126,6 +126,10 @@ class ShortcutMakerTest {
 
     private fun iconChipText() = context.getString(R.string.ql_icon_value, context.getString(R.string.ql_icon_glyph))
 
+    private fun cancelEditor() {
+        onView(withText(R.string.cancel)).perform(click())
+    }
+
     private fun firstListItem() {
         onData(anything()).inAdapterView(isAssignableFrom(ListView::class.java)).atPosition(0).perform(click())
     }
@@ -221,6 +225,7 @@ class ShortcutMakerTest {
             firstListItem()
             tap(R.string.ql_try)
             intended(hasComponent(hasPackageName(settingsPackage)))
+            cancelEditor()
         }
         assertTrue(created().isEmpty())
     }
@@ -329,6 +334,7 @@ class ShortcutMakerTest {
             onView(withText(R.string.save)).perform(click())
             instrumentation.waitForIdleSync()
             onView(withText(R.string.save)).check(matches(isDisplayed()))
+            cancelEditor()
         }
         assertTrue(created().isEmpty())
     }
@@ -343,6 +349,7 @@ class ShortcutMakerTest {
             onView(withText(R.string.save)).perform(click())
             instrumentation.waitForIdleSync()
             onView(withText(R.string.save)).check(matches(isDisplayed()))
+            cancelEditor()
         }
         assertTrue(created().isEmpty())
     }
@@ -356,6 +363,7 @@ class ShortcutMakerTest {
             onView(withText(R.string.save)).perform(click())
             instrumentation.waitForIdleSync()
             onView(withText(R.string.save)).check(matches(isDisplayed()))
+            cancelEditor()
         }
         assertTrue(created().isEmpty())
     }
@@ -368,6 +376,7 @@ class ShortcutMakerTest {
             onView(withText(R.string.save)).perform(click())
             instrumentation.waitForIdleSync()
             onView(withText(R.string.save)).check(matches(isDisplayed()))
+            cancelEditor()
         }
         assertTrue(created().isEmpty())
     }
