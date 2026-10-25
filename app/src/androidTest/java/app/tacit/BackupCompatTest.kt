@@ -327,7 +327,7 @@ class BackupCompatTest {
             .put(backupItem("i0000002", QuicklinkType.INTENT, "intent:#Intent;component=app.tacit/.ui.SettingsActivity;end"))
             .put(backupItem("i0000003", QuicklinkType.INTENT, "intent://sdcard/x#Intent;scheme=file;action=android.intent.action.VIEW;end"))
             .put(backupItem("i0000004", QuicklinkType.INTENT, granted))
-            .put(backupItem("i0000005", QuicklinkType.INTENT, "intent:#Intent;end"))
+            .put(backupItem("i0000005", QuicklinkType.INTENT, IntentSanitizer.encode(Intent(Intent.ACTION_VIEW, Uri.parse("content://$own.files/shared/a.txt")))))
             .put(backupItem("i0000006", QuicklinkType.INTENT, "https://example.com"))
             .put(backupItem("a0000001", QuicklinkType.ACTIVITY, "not a component"))
             .put(backupItem("a0000002", QuicklinkType.ACTIVITY, "com.android.settings/com.android.settings.Settings"))

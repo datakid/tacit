@@ -14,7 +14,7 @@ object IntentSanitizer {
     fun build(spec: IntentSpec, own: String): Intent? {
         if (spec.validate(own).isNotEmpty()) return null
         val intent = Intent()
-        if (spec.action.isNotEmpty()) intent.action = spec.action
+        intent.action = spec.action.ifEmpty { Intent.ACTION_VIEW }
         val data = spec.data.takeIf { it.isNotEmpty() }?.let { Uri.parse(it) }
         val mime = spec.mime.takeIf { it.isNotEmpty() }
         when {
@@ -72,15 +72,7 @@ object IntentSanitizer {
     fun parse(target: String, own: String): Intent? {
         if (!target.startsWith(QuicklinkRules.INTENT_PREFIX)) return null
         val parsed = runCatching { Intent.parseUri(target, Intent.URI_INTENT_SCHEME) }.getOrNull() ?: return null
-        if (!hasExplicitAction(target)) parsed.action = null
         return sanitize(parsed, own)
-    }
-
-    private fun hasExplicitAction(target: String): Boolean {
-        val start = target.lastIndexOf('#')
-        if (start < 0 || !target.startsWith("#Intent;", start)) return false
-        val body = target.substring(start + "#Intent;".length).substringBefore("SEL;")
-        return body.startsWith("action=") || body.contains(";action=")
     }
 
     fun canonical(target: String, own: String): String? = parse(target, own)?.let { encode(it) }

@@ -144,7 +144,7 @@ class IntentSanitizerTest {
     @Test
     fun anIntentWithNothingToLaunchIsRefused() {
         assertNull(IntentSanitizer.sanitize(Intent(), own))
-        assertNull(IntentSanitizer.parse("intent:#Intent;end", own))
+        assertNull(IntentSanitizer.build(IntentSpec(data = "https://example.com"), own))
     }
 
     @Test
@@ -171,28 +171,25 @@ class IntentSanitizerTest {
     }
 
     @Test
-    fun anIntentWithoutAnActionStaysWithoutOne() {
+    fun anIntentWithoutAnActionIsLaunchedAsView() {
         val component = IntentSpec(component = "com.android.settings/com.android.settings.Settings")
-        val stored = IntentSanitizer.encode(IntentSanitizer.build(component, own)!!)
-        assertEquals(component, IntentSanitizer.specOfTarget(stored, own))
-        assertNull(IntentSanitizer.launchable(stored, own)!!.action)
-        val dataOnly = IntentSpec(data = "https://example.com/a", component = "com.example.app/com.example.app.Main")
-        assertEquals(dataOnly, IntentSanitizer.specOfTarget(IntentSanitizer.encode(IntentSanitizer.build(dataOnly, own)!!), own))
+        val built = IntentSanitizer.build(component, own)!!
+        assertEquals(Intent.ACTION_VIEW, built.action)
+        val stored = IntentSanitizer.encode(built)
+        assertEquals(component.copy(action = Intent.ACTION_VIEW), IntentSanitizer.specOfTarget(stored, own))
+        assertEquals(Intent.ACTION_VIEW, IntentSanitizer.launchable(stored, own)!!.action)
+        assertEquals(stored, IntentSanitizer.canonical(stored, own))
     }
 
     @Test
-    fun anExplicitViewActionIsKept() {
+    fun theViewActionRoundTripsWhetherOrNotTheTextSpellsItOut() {
         val spec = IntentSpec(action = Intent.ACTION_VIEW, data = "https://example.com/a")
         val stored = IntentSanitizer.encode(IntentSanitizer.build(spec, own)!!)
-        assertTrue(stored.contains("action=android.intent.action.VIEW"))
         assertEquals(spec, IntentSanitizer.specOfTarget(stored, own))
-    }
-
-    private fun legacyResult(shortcut: Intent?, name: String?): Intent {
-        val data = Intent()
-        if (shortcut != null) data.putExtra(Intent.EXTRA_SHORTCUT_INTENT, shortcut)
-        if (name != null) data.putExtra(Intent.EXTRA_SHORTCUT_NAME, name)
-        return data
+        val spelled = stored.replace("#Intent;", "#Intent;action=android.intent.action.VIEW;")
+        assertTrue(spelled != stored)
+        assertEquals(spec, IntentSanitizer.specOfTarget(spelled, own))
+        assertEquals(stored, IntentSanitizer.canonical(spelled, own))
     }
 
     @Test
