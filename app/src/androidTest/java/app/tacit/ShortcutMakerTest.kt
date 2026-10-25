@@ -48,6 +48,7 @@ import app.tacit.ui.QuicklinksActivity
 import app.tacit.ui.SearchActivity
 import org.hamcrest.Matchers.allOf
 import org.hamcrest.Matchers.anything
+import org.hamcrest.Matchers.hasToString
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -119,6 +120,10 @@ class ShortcutMakerTest {
         onView(withText(R.string.ql_type_url)).perform(click())
     }
 
+    private fun chooseType(label: Int) {
+        onData(hasToString(context.getString(label))).perform(click())
+    }
+
     private fun iconChipText() = context.getString(R.string.ql_icon_value, context.getString(R.string.ql_icon_glyph))
 
     private fun firstListItem() {
@@ -173,7 +178,7 @@ class ShortcutMakerTest {
     fun settingsExplorerSavesTheChosenScreen() {
         ActivityScenario.launch(QuicklinksActivity::class.java).use {
             openChooser()
-            onView(withText(R.string.ql_choice_settings_explorer)).perform(click())
+            chooseType(R.string.ql_choice_settings_explorer)
             Idle.await()
             firstListItem()
             onView(withText(R.string.save)).perform(click())
@@ -192,7 +197,7 @@ class ShortcutMakerTest {
         val settings = Graph.apps.mainProfileApps().first { Graph.apps.packageOf(it.payload) == settingsPackage }
         ActivityScenario.launch(QuicklinksActivity::class.java).use {
             openChooser()
-            onView(withText(R.string.ql_type_activity)).perform(click())
+            chooseType(R.string.ql_type_activity)
             onView(withText(R.string.ql_choose_screen)).perform(click())
             onData(anything()).inAdapterView(isAssignableFrom(ListView::class.java)).atPosition(0).check(matches(withText(settings.label)))
             firstListItem()
@@ -211,7 +216,7 @@ class ShortcutMakerTest {
     fun tryOpensTheScreenWithoutSavingIt() {
         ActivityScenario.launch(QuicklinksActivity::class.java).use {
             openChooser()
-            onView(withText(R.string.ql_choice_settings_explorer)).perform(click())
+            chooseType(R.string.ql_choice_settings_explorer)
             Idle.await()
             firstListItem()
             tap(R.string.ql_try)
@@ -258,7 +263,7 @@ class ShortcutMakerTest {
 
     private fun openIntentForm() {
         openChooser()
-        onView(withText(R.string.ql_type_intent)).perform(click())
+        chooseType(R.string.ql_type_intent)
     }
 
     private fun typeInto(hint: Int, text: String) {
@@ -396,8 +401,14 @@ class ShortcutMakerTest {
         val link = add(QuicklinkType.INTENT, IntentSanitizer.encode(IntentSanitizer.build(spec, own)!!), spec.summary())
         val intent = Intent(context, QuicklinksActivity::class.java).putExtra(QuicklinksActivity.EXTRA_EDIT, link.id)
         ActivityScenario.launch<QuicklinksActivity>(intent).use {
-            for (text in listOf("android.intent.action.VIEW", "https://example.com/mk", "k", "v")) {
-                onView(withText(text)).perform(scrollTo()).check(matches(isDisplayed()))
+            val fields = listOf(
+                R.string.ql_intent_action to "android.intent.action.VIEW",
+                R.string.ql_intent_data to "https://example.com/mk",
+                R.string.ql_extra_key to "k",
+                R.string.ql_extra_value to "v"
+            )
+            for ((hint, text) in fields) {
+                onView(allOf(withHint(hint), withText(text))).perform(scrollTo()).check(matches(isDisplayed()))
             }
         }
     }

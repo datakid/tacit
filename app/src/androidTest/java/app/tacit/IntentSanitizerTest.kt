@@ -165,9 +165,27 @@ class IntentSanitizerTest {
     }
 
     @Test
-    fun resolvesSeesAnActivityThatCanOpenAWebLink() {
-        assertTrue(IntentSanitizer.resolves(context, view("https://example.com")))
+    fun resolvesSeesTheSettingsApp() {
+        assertTrue(IntentSanitizer.resolves(context, Intent("android.settings.SETTINGS")))
         assertFalse(IntentSanitizer.resolves(context, Intent("tacit.test.action.NOBODY_HANDLES_THIS")))
+    }
+
+    @Test
+    fun anIntentWithoutAnActionStaysWithoutOne() {
+        val component = IntentSpec(component = "com.android.settings/com.android.settings.Settings")
+        val stored = IntentSanitizer.encode(IntentSanitizer.build(component, own)!!)
+        assertEquals(component, IntentSanitizer.specOfTarget(stored, own))
+        assertNull(IntentSanitizer.launchable(stored, own)!!.action)
+        val dataOnly = IntentSpec(data = "https://example.com/a", component = "com.example.app/com.example.app.Main")
+        assertEquals(dataOnly, IntentSanitizer.specOfTarget(IntentSanitizer.encode(IntentSanitizer.build(dataOnly, own)!!), own))
+    }
+
+    @Test
+    fun anExplicitViewActionIsKept() {
+        val spec = IntentSpec(action = Intent.ACTION_VIEW, data = "https://example.com/a")
+        val stored = IntentSanitizer.encode(IntentSanitizer.build(spec, own)!!)
+        assertTrue(stored.contains("action=android.intent.action.VIEW"))
+        assertEquals(spec, IntentSanitizer.specOfTarget(stored, own))
     }
 
     private fun legacyResult(shortcut: Intent?, name: String?): Intent {

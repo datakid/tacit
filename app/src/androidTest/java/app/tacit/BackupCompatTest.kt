@@ -213,7 +213,7 @@ class BackupCompatTest {
             val text = file.readText()
             assertFalse("the old content was not replaced", text.contains("xxxx"))
             val exported = JSONObject(text)
-            assertEquals(1, exported.getInt("tacit_backup"))
+            assertEquals(2, exported.getInt("tacit_backup"))
             assertEquals(expectedAliases(fixture), expectedAliases(exported))
             assertEquals(expectedSnippets(fixture), expectedSnippets(exported))
             assertEquals(expectedQuicklinks(fixture), expectedQuicklinks(exported))

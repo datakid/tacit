@@ -8,7 +8,10 @@ These come from Android itself. Tacit doesn't work around them with root, hacks 
 - **Clipboard lock**: only available when the phone has a screen lock set.
 - **Clipboard**: Android 10+ only lets the app on screen read the clipboard. Tacit saves what's on the clipboard each time you open it; copies made in between are missed.
 - **Updates**: installing, updating or removing an app reaches Tacit as a burst of events. Tacit waits 400 ms, reloads once, and reloads only what changed. The new app can take about half a second to show up.
-- **App shortcuts**: only available while Tacit is the default home app.
+- **App shortcuts**: only available while Tacit is the default home app. While it is, Add to home screen is hidden and a shortcut another app pins to the home screen asks you to add it to Tacit.
+- **App screens**: only screens that are exported and need no permission can be opened from outside the app. Some of those need data the app does not get from Tacit and close at once or crash in the other app; Try shows it before you save. Apps in a work or Private Space profile are not listed.
+- **Custom intents**: text, number and true/false extras only, up to 20. Tacit's own screens and files, `file:` addresses, selectors, flags and package restrictions are refused or dropped. Android can hide an app from the check that finds a handler; Try the intent, and Save then accepts it.
+- **Legacy shortcuts**: only apps that still answer the old create-shortcut request are listed. What they hand back keeps its action, data, type, categories, component and the supported extras.
 - **No internet**: no currency rates, no search suggestions, no update checks.
 - **WhatsApp**: going straight to a chat needs WhatsApp's contact entry or a number with a country code (set a default country code in Settings).
 - **First install over a beta**: the stable release is signed with the owner's key, so a phone with a beta (debug-signed) build has to uninstall it first. Settings are not carried over; export them from Settings before uninstalling.

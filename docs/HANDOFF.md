@@ -54,6 +54,12 @@ Tacit is at 1.0.1-beta (1.0.0 plus the safety net for 1.1). CI builds it, runs t
 - [ ] Rename a quicklink that is pinned to the home screen: the shortcut label changes; delete it and the shortcut says it was deleted
 - [ ] Alias table: batch edit, CSV round trip, a shared alias shows every item
 - [ ] Quicklinks: one of each type, pin to home screen, a deleted target opens its editor
+- [ ] Pin from another app: while Tacit is home, use Add to home screen in an app that offers it (Chrome); Tacit asks "Add to Tacit", the new row appears, and its long-press menu has Remove from Tacit
+- [ ] App screens: Add quicklink, App screen, pick two apps you use and a screen in each; Try opens it, the saved link opens it, and a screen that closes at once tells you in the editor; Settings explorer lists Wi-Fi and display screens on your phone
+- [ ] Custom intent: one with an action and data (a `geo:` or `https:` address), one with a text extra, one pointing at an app that is not installed (Save refuses), one pointing at Tacit (refused); Try before Save for a handler the check cannot see
+- [ ] Legacy shortcut: pick an app that still offers one (a browser, a file manager); the result is a quicklink, or a row when Tacit is home
+- [ ] Icons: change a pinned quicklink to the app icon and to letters; the home screen icon follows; Arabic letters work
+- [ ] Backup made on 1.0.5 imports back with the icons; a backup from 1.0.4 imports with standard icons
 - [ ] Quick actions: `timer 10 tea`, `alarm 7:30`, `event dentist tomorrow 3pm` open the clock and calendar apps with the right values
 - [ ] Row size: Comfortable and Compact (Compact is the new dense row with the subtitle inline); pick it on the first-run card and in Settings; contact rows with both WhatsApps on a narrow phone show More and the name stays readable; Compact next to Comfortable in Settings, Aliases, Snippets and Quicklinks; large font and Arabic in both
 - [ ] Drawer: letter strip on a real thumb, fling speed and icon loading on a budget phone, System settings tab
