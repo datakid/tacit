@@ -19,6 +19,10 @@ import androidx.test.espresso.matcher.ViewMatchers.isDisplayed
 import androidx.test.espresso.matcher.ViewMatchers.withText
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import app.tacit.actions.IntentSanitizer
+import app.tacit.core.ExtraType
+import app.tacit.core.IntentExtra
+import app.tacit.core.IntentSpec
 import app.tacit.core.QuicklinkType
 import app.tacit.data.Backup
 import app.tacit.data.Quicklink
@@ -156,7 +160,7 @@ class BackupCompatTest {
         Backup.import(fixtureText)
         val exported = JSONObject(Backup.export())
 
-        assertEquals(1, exported.getInt("tacit_backup"))
+        assertEquals(2, exported.getInt("tacit_backup"))
         assertEquals(setOf("tacit_backup", "prefs", "aliases", "snippets", "quicklinks"), exported.keys().asSequence().toSet())
         assertEquals(expectedAliases(fixture), expectedAliases(exported))
         assertEquals(expectedSnippets(fixture), expectedSnippets(exported))
@@ -269,5 +273,70 @@ class BackupCompatTest {
                 assertEquals(0, Graph.quicklinks.all().size)
             }
         }
+    }
+
+    private val own: String get() = Graph.context.packageName
+
+    private fun backupItem(id: String, type: QuicklinkType, target: String): JSONObject =
+        JSONObject().put("id", id).put("name", id).put("type", type.name).put("target", target).put("detail", "")
+
+    @Test
+    fun versionTwoRoundTripKeepsTheNewTypesAndIcons() {
+        val spec = IntentSpec(
+            action = "android.intent.action.VIEW",
+            data = "https://example.com/a",
+            extras = listOf(IntentExtra("k", ExtraType.STRING, "v"), IntentExtra("n", ExtraType.INT, "3"))
+        )
+        val intent = IntentSanitizer.encode(IntentSanitizer.build(spec, own)!!)
+        val links = listOf(
+            Quicklink("v2a00001", "Wi-Fi screen", QuicklinkType.ACTIVITY, "com.android.settings/com.android.settings.wifi.WifiSettings", "Settings · Wi-Fi", "app"),
+            Quicklink("v2a00002", "Open site", QuicklinkType.INTENT, intent, "android.intent.action.VIEW", "letter:OS"),
+            Quicklink("v2a00003", "Plain", QuicklinkType.URL, "https://example.com", "", "letter:PL"),
+            Quicklink("v2a00004", "Mail app", QuicklinkType.APP, "com.example.mail/com.example.mail.Main|0", "Mail", "app"),
+            Quicklink("v2a00005", "Default", QuicklinkType.URL, "https://example.org", "")
+        )
+        Graph.quicklinks.replaceAll(links)
+        val text = Backup.export()
+        assertEquals(2, JSONObject(text).getInt("tacit_backup"))
+        Graph.quicklinks.replaceAll(emptyList())
+        Backup.import(text)
+        assertEquals(links, Graph.quicklinks.all())
+    }
+
+    @Test
+    fun summaryAcceptsVersionsOneAndTwoOnly() {
+        assertEquals(0, Backup.summarize("{\"tacit_backup\":1}")!!.aliases)
+        assertEquals(0, Backup.summarize("{\"tacit_backup\":2}")!!.quicklinks)
+        assertNull(Backup.summarize("{\"tacit_backup\":3}"))
+        assertNull(Backup.summarize("{\"tacit_backup\":0}"))
+    }
+
+    @Test
+    fun importIgnoresABackupFromAnUnknownVersion() {
+        Graph.quicklinks.replaceAll(listOf(Quicklink("keep0001", "Keep", QuicklinkType.URL, "https://keep.example", "")))
+        Backup.import("{\"tacit_backup\":3,\"quicklinks\":[]}")
+        assertEquals(listOf("keep0001"), Graph.quicklinks.all().map { it.id })
+    }
+
+    @Test
+    fun importDropsLinksThatBreakTheRulesAndKeepsTheRest() {
+        val good = IntentSanitizer.encode(IntentSanitizer.build(IntentSpec(action = "android.intent.action.VIEW", data = "https://example.com"), own)!!)
+        val granted = "intent:#Intent;action=android.intent.action.VIEW;launchFlags=0x1;end"
+        val array = JSONArray()
+            .put(backupItem("i0000001", QuicklinkType.INTENT, good))
+            .put(backupItem("i0000002", QuicklinkType.INTENT, "intent:#Intent;component=app.tacit/.ui.SettingsActivity;end"))
+            .put(backupItem("i0000003", QuicklinkType.INTENT, "intent://sdcard/x#Intent;scheme=file;action=android.intent.action.VIEW;end"))
+            .put(backupItem("i0000004", QuicklinkType.INTENT, granted))
+            .put(backupItem("i0000005", QuicklinkType.INTENT, "intent:#Intent;end"))
+            .put(backupItem("i0000006", QuicklinkType.INTENT, "https://example.com"))
+            .put(backupItem("a0000001", QuicklinkType.ACTIVITY, "not a component"))
+            .put(backupItem("a0000002", QuicklinkType.ACTIVITY, "com.android.settings/com.android.settings.Settings"))
+        Backup.import(JSONObject().put("tacit_backup", 2).put("quicklinks", array).toString())
+
+        val kept = Graph.quicklinks.all()
+        assertEquals(listOf("i0000001", "i0000004", "a0000002"), kept.map { it.id })
+        assertEquals(good, kept[0].target)
+        assertEquals(IntentSanitizer.canonical(granted, own), kept[1].target)
+        assertFalse(kept[1].target.contains("launchFlags"))
     }
 }

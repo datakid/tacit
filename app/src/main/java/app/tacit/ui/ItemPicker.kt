@@ -18,8 +18,16 @@ import app.tacit.core.SearchItem
 
 object ItemPicker {
 
-    fun show(activity: Activity, palette: Palette, title: String, items: List<SearchItem>, onPick: (SearchItem) -> Unit) {
-        val sorted = items.sortedBy { it.label.lowercase() }
+    fun show(
+        activity: Activity,
+        palette: Palette,
+        title: String,
+        items: List<SearchItem>,
+        top: ((SearchItem) -> Boolean)? = null,
+        onPick: (SearchItem) -> Unit
+    ) {
+        val sorted = if (top == null) items.sortedBy { it.label.lowercase() }
+        else items.sortedWith(compareBy<SearchItem> { if (top(it)) 0 else 1 }.thenBy { it.label.lowercase() })
         val haystacks = sorted.map { Normalizer.normalize(it.label + " " + it.subtitle) }
         val pad = Ui.dp(activity, 16)
         val rowPad = Ui.dp(activity, 12)

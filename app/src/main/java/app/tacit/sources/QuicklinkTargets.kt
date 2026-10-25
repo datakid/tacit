@@ -1,11 +1,14 @@
 package app.tacit.sources
 
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.DocumentsContract
 import android.provider.OpenableColumns
 import app.tacit.Graph
+import app.tacit.actions.IntentSanitizer
 import app.tacit.core.QuicklinkType
 import app.tacit.core.TargetState
 import app.tacit.data.Quicklink
@@ -19,6 +22,18 @@ object QuicklinkTargets {
         QuicklinkType.APP -> if (Graph.apps.hasApp(link.target)) TargetState.OK else TargetState.MISSING
         QuicklinkType.APP_SHORTCUT -> if (Graph.apps.hasShortcut(link.target) == false) TargetState.MISSING else TargetState.OK
         QuicklinkType.FILE, QuicklinkType.FOLDER -> documentState(Graph.context, link)
+        QuicklinkType.ACTIVITY -> activityState(Graph.context, link.target)
+        QuicklinkType.INTENT -> if (IntentSanitizer.parse(link.target, Graph.context.packageName) != null) TargetState.OK else TargetState.MISSING
+    }
+
+    fun activityState(context: Context, target: String): TargetState {
+        val component = ComponentName.unflattenFromString(target) ?: return TargetState.MISSING
+        return try {
+            context.packageManager.getActivityInfo(component, 0)
+            TargetState.OK
+        } catch (error: PackageManager.NameNotFoundException) {
+            TargetState.MISSING
+        }
     }
 
     fun documentState(context: Context, link: Quicklink): TargetState {

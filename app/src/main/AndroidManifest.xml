@@ -28,6 +28,9 @@
             <action android:name="android.intent.action.APPLICATION_PREFERENCES" />
         </intent>
         <intent>
+            <action android:name="android.intent.action.CREATE_SHORTCUT" />
+        </intent>
+        <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="https" />
         </intent>

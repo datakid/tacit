@@ -1,6 +1,8 @@
 package app.tacit.data
 
 import app.tacit.Graph
+import app.tacit.actions.IntentSanitizer
+import app.tacit.core.QuicklinkIcon
 import app.tacit.core.QuicklinkRules
 import app.tacit.core.QuicklinkType
 import org.json.JSONArray
@@ -10,11 +12,14 @@ class BackupSummary(val aliases: Int, val snippets: Int, val quicklinks: Int)
 
 object Backup {
 
-    private const val VERSION = 1
+    private const val VERSION = 2
+    private val SUPPORTED = 1..2
+
+    private fun supported(root: JSONObject): Boolean = root.has("tacit_backup") && root.optInt("tacit_backup", 0) in SUPPORTED
 
     fun summarize(text: String): BackupSummary? {
         val root = runCatching { JSONObject(text) }.getOrNull() ?: return null
-        if (!root.has("tacit_backup")) return null
+        if (!supported(root)) return null
         return BackupSummary(
             root.optJSONObject("aliases")?.length() ?: 0,
             root.optJSONArray("snippets")?.length() ?: 0,
@@ -44,7 +49,7 @@ object Backup {
         val quicklinks = JSONArray()
         for (link in Graph.quicklinks.all()) {
             quicklinks.put(JSONObject().put("id", link.id).put("name", link.name).put("type", link.type.name)
-                .put("target", QuicklinkRules.exportTarget(link.type, link.target)).put("detail", link.detail))
+                .put("target", QuicklinkRules.exportTarget(link.type, link.target)).put("detail", link.detail).put("icon", link.icon))
         }
         root.put("quicklinks", quicklinks)
         return root.toString(2)
@@ -52,7 +57,7 @@ object Backup {
 
     fun import(text: String) {
         val root = JSONObject(text)
-        if (!root.has("tacit_backup")) return
+        if (!supported(root)) return
         root.optJSONObject("prefs")?.let { prefs ->
             val editor = Graph.prefs.store.edit()
             for (key in prefs.keys()) {
@@ -87,9 +92,12 @@ object Backup {
             val list = (0 until array.length()).mapNotNull { index ->
                 val item = array.getJSONObject(index)
                 val type = runCatching { QuicklinkType.valueOf(item.optString("type")) }.getOrNull() ?: return@mapNotNull null
-                val target = QuicklinkRules.importTarget(type, item.optString("target")) ?: return@mapNotNull null
+                val imported = QuicklinkRules.importTarget(type, item.optString("target")) ?: return@mapNotNull null
+                val target = if (type == QuicklinkType.INTENT) {
+                    IntentSanitizer.canonical(imported, Graph.context.packageName) ?: return@mapNotNull null
+                } else imported
                 Quicklink(item.optString("id").ifEmpty { Graph.quicklinks.newId() }, item.optString("name"), type,
-                    target, item.optString("detail"))
+                    target, item.optString("detail"), QuicklinkIcon.normalize(type, item.optString("icon")))
             }
             Graph.quicklinks.replaceAll(list)
         }

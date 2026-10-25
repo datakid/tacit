@@ -53,6 +53,11 @@ class AppSource(private val context: Context) {
         return if (current.isEmpty()) null else current.any { it.payload == payload }
     }
 
+    fun mainProfileApps(): List<SearchItem> {
+        val serial = userManager.getSerialNumberForUser(Process.myUserHandle()).toString()
+        return cached.filter { it.payload.substringAfter('|', "") == serial }
+    }
+
     fun labelFor(packageName: String): String =
         cached.firstOrNull { it.payload.startsWith("$packageName/") }?.label ?: packageName
 

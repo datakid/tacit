@@ -8,8 +8,14 @@ import android.content.pm.ShortcutManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
+import android.graphics.Paint
+import android.graphics.Typeface
 import android.graphics.drawable.Icon
+import app.tacit.Graph
 import app.tacit.R
+import app.tacit.core.QuicklinkIcon
 import app.tacit.data.Quicklink
 import app.tacit.ui.IconSet
 import app.tacit.ui.QuicklinkIcons
@@ -18,6 +24,7 @@ object PinShortcut {
 
     private const val SIZE = 432
     private const val INSET = 130
+    private const val LETTER_SHARE = 0.45f
 
     fun supported(context: Context): Boolean =
         context.getSystemService(ShortcutManager::class.java)?.isRequestPinShortcutSupported == true &&
@@ -54,13 +61,47 @@ object PinShortcut {
         }
     }
 
-    private fun icon(context: Context, link: Quicklink): Icon {
+    fun icon(context: Context, link: Quicklink): Icon {
         val bitmap = Bitmap.createBitmap(SIZE, SIZE, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         canvas.drawColor(Color.BLACK)
+        val choice = QuicklinkIcon.normalize(link.type, link.icon)
+        val letters = QuicklinkIcon.lettersOf(choice)
+        val drawn = when {
+            letters != null -> drawLetters(canvas, letters)
+            choice == QuicklinkIcon.APP -> drawApp(context, link, canvas)
+            else -> false
+        }
+        if (!drawn) drawGlyph(context, link, canvas)
+        return Icon.createWithAdaptiveBitmap(bitmap)
+    }
+
+    private fun drawGlyph(context: Context, link: Quicklink, canvas: Canvas) {
         val glyph = IconSet(context, Color.WHITE).make(QuicklinkIcons.res(link.type))
         glyph.setBounds(INSET, INSET, SIZE - INSET, SIZE - INSET)
         glyph.draw(canvas)
-        return Icon.createWithAdaptiveBitmap(bitmap)
+    }
+
+    private fun drawApp(context: Context, link: Quicklink, canvas: Canvas): Boolean {
+        val pkg = QuicklinkIcon.packageOf(link.type, link.target) ?: return false
+        val drawable = runCatching { context.packageManager.getApplicationIcon(pkg).mutate() }.getOrNull() ?: return false
+        if (Graph.prefs.iconMode == "mono") {
+            drawable.colorFilter = ColorMatrixColorFilter(ColorMatrix().apply { setSaturation(0f) })
+        }
+        drawable.setBounds(INSET, INSET, SIZE - INSET, SIZE - INSET)
+        drawable.draw(canvas)
+        return true
+    }
+
+    private fun drawLetters(canvas: Canvas, letters: String): Boolean {
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+            typeface = Typeface.DEFAULT_BOLD
+            textSize = SIZE * LETTER_SHARE
+            textAlign = Paint.Align.CENTER
+        }
+        val baseline = SIZE / 2f - (paint.descent() + paint.ascent()) / 2f
+        canvas.drawText(letters, SIZE / 2f, baseline, paint)
+        return true
     }
 }
