@@ -5,7 +5,7 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-enum class QuicklinkType { URL, SETTING, APP, APP_SHORTCUT, FILE, FOLDER, CONTACT }
+enum class QuicklinkType { URL, SETTING, APP, APP_SHORTCUT, FILE, FOLDER, CONTACT, ACTIVITY, INTENT }
 
 enum class TargetState { OK, MISSING, REPICK }
 
@@ -31,6 +31,8 @@ object QuicklinkRules {
     private val space = Regex("\\s+")
     private val token = Regex("\\{(query|clipboard|date)(?::([^{}]{1,32}))?\\}")
     private val numberShape = Regex("^[0-9+*#() .-]{1,32}$")
+    private val activityShape = Regex("^[A-Za-z0-9_]+(\\.[A-Za-z0-9_]+)*/[A-Za-z0-9_.$]+$")
+    const val INTENT_PREFIX = "intent:"
 
     fun takesQuery(target: String): Boolean = target.contains(PLACEHOLDER)
 
@@ -128,6 +130,8 @@ object QuicklinkRules {
             else -> null
         }
         QuicklinkType.SETTING, QuicklinkType.APP, QuicklinkType.APP_SHORTCUT -> target.takeIf { it.isNotEmpty() }
+        QuicklinkType.ACTIVITY -> target.takeIf { activityShape.matches(it) }
+        QuicklinkType.INTENT -> target.takeIf { it.startsWith(INTENT_PREFIX) && it.length > INTENT_PREFIX.length }
     }
 
     fun match(text: String, candidates: List<QuicklinkNames>): QuicklinkMatch? {

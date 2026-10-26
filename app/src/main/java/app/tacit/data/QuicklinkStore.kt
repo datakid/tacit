@@ -1,11 +1,8 @@
 package app.tacit.data
 
 import android.content.Context
-import app.tacit.core.QuicklinkType
 import java.io.File
 import java.util.UUID
-
-data class Quicklink(val id: String, val name: String, val type: QuicklinkType, val target: String, val detail: String)
 
 class QuicklinkStore(context: Context) {
 
@@ -41,21 +38,14 @@ class QuicklinkStore(context: Context) {
 
     private fun load(): MutableList<Quicklink> {
         cache?.let { return it }
-        val loaded = ArrayList<Quicklink>()
-        if (file.exists()) {
-            for (row in Csv.decode(file.readText())) {
-                if (row.size < 5) continue
-                val type = runCatching { QuicklinkType.valueOf(row[2]) }.getOrNull() ?: continue
-                loaded.add(Quicklink(row[0], row[1], type, row[3], row[4]))
-            }
-        }
+        val loaded = if (file.exists()) QuicklinkCsv.decode(file.readText()) else ArrayList()
         cache = loaded
         return loaded
     }
 
     private fun save(list: List<Quicklink>) {
         val temp = File(file.parentFile, "quicklinks.csv.tmp")
-        temp.writeText(Csv.encode(list.map { listOf(it.id, it.name, it.type.name, it.target, it.detail) }))
+        temp.writeText(QuicklinkCsv.encode(list))
         temp.renameTo(file)
     }
 }

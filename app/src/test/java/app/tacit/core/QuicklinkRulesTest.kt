@@ -240,4 +240,35 @@ class QuicklinkRulesTest {
         assertNull(QuicklinkRules.importTarget(QuicklinkType.APP, ""))
         assertEquals("a/b|0", QuicklinkRules.importTarget(QuicklinkType.APP, "a/b|0"))
     }
+
+    @Test
+    fun importKeepsActivityTargetsThatLookLikeAComponent() {
+        assertEquals("com.android.settings/com.android.settings.wifi.WifiSettings",
+            QuicklinkRules.importTarget(QuicklinkType.ACTIVITY, "com.android.settings/com.android.settings.wifi.WifiSettings"))
+        assertEquals("a.b/a.b.Outer\$Inner", QuicklinkRules.importTarget(QuicklinkType.ACTIVITY, "a.b/a.b.Outer\$Inner"))
+        assertNull(QuicklinkRules.importTarget(QuicklinkType.ACTIVITY, ""))
+        assertNull(QuicklinkRules.importTarget(QuicklinkType.ACTIVITY, "com.android.settings"))
+        assertNull(QuicklinkRules.importTarget(QuicklinkType.ACTIVITY, "/Main"))
+        assertNull(QuicklinkRules.importTarget(QuicklinkType.ACTIVITY, "a b/Main"))
+        assertNull(QuicklinkRules.importTarget(QuicklinkType.ACTIVITY, "a/b/c"))
+    }
+
+    @Test
+    fun importKeepsIntentTargetsThatLookLikeIntentUris() {
+        val target = "intent:#Intent;action=android.intent.action.VIEW;end"
+        assertEquals(target, QuicklinkRules.importTarget(QuicklinkType.INTENT, target))
+        assertNull(QuicklinkRules.importTarget(QuicklinkType.INTENT, ""))
+        assertNull(QuicklinkRules.importTarget(QuicklinkType.INTENT, "intent:"))
+        assertNull(QuicklinkRules.importTarget(QuicklinkType.INTENT, "https://example.com"))
+        assertNull(QuicklinkRules.importTarget(QuicklinkType.INTENT, "action=android.intent.action.VIEW"))
+    }
+
+    @Test
+    fun newTypesAreExportedAsTheyAre() {
+        assertEquals("a.b/a.b.X", QuicklinkRules.exportTarget(QuicklinkType.ACTIVITY, "a.b/a.b.X"))
+        assertEquals("intent:#Intent;action=a.b;end", QuicklinkRules.exportTarget(QuicklinkType.INTENT, "intent:#Intent;action=a.b;end"))
+        assertTrue(!QuicklinkRules.holdsGrant(QuicklinkType.ACTIVITY, "content://x"))
+        assertTrue(!QuicklinkRules.holdsGrant(QuicklinkType.INTENT, "content://x"))
+        assertTrue(!QuicklinkRules.needsRepick(QuicklinkType.INTENT, ""))
+    }
 }

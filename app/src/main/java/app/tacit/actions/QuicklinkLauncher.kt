@@ -5,7 +5,9 @@ import android.content.Intent
 import android.graphics.Rect
 import android.net.Uri
 import android.provider.DocumentsContract
+import android.widget.Toast
 import app.tacit.Graph
+import app.tacit.R
 import app.tacit.core.ItemKind
 import app.tacit.core.QuicklinkRules
 import app.tacit.core.QuicklinkType
@@ -32,7 +34,15 @@ object QuicklinkLauncher {
             QuicklinkType.FILE -> openDocument(activity, link) { Actions.openFile(activity, link.target) }
             QuicklinkType.FOLDER -> openDocument(activity, link) { openFolder(activity, link.target) }
             QuicklinkType.CONTACT -> openContact(activity, link.target)
+            QuicklinkType.ACTIVITY -> openOrEdit(activity, link, IntentSanitizer.componentIntent(link.target, activity.packageName))
+            QuicklinkType.INTENT -> openOrEdit(activity, link, IntentSanitizer.launchable(link.target, activity.packageName))
         }
+    }
+
+    private fun openOrEdit(activity: Activity, link: Quicklink, intent: Intent?): Boolean {
+        if (intent != null && Actions.start(activity, intent)) return true
+        Toast.makeText(activity, R.string.ql_cannot_open, Toast.LENGTH_LONG).show()
+        return edit(activity, link)
     }
 
     private fun edit(activity: Activity, link: Quicklink): Boolean {

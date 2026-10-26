@@ -1,0 +1,6 @@
+Shortcut maker build.
+• Quicklinks to a screen inside another app, with a Settings explorer
+• Custom intent quicklinks with a Try button
+• Legacy shortcuts become quicklinks
+• Icons: standard, app icon or letters
+• Shortcuts pinned from other apps can be added to Tacit and removed
