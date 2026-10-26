@@ -80,7 +80,12 @@ object Graph {
         applyPrefs()
         worker.post {
             crashReportSaved = File(appContext.filesDir, TacitApp.CRASH_FILE).exists()
-            val cached = IndexCache.read(appContext)
+            android.os.Trace.beginSection("tacit.cache.read")
+            val cached = try {
+                IndexCache.read(appContext)
+            } finally {
+                android.os.Trace.endSection()
+            }
             if (cached != null) {
                 engine.replaceItems(cached)
                 main.post { listeners.forEach { it() } }

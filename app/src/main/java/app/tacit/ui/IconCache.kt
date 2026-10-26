@@ -11,16 +11,25 @@ import android.graphics.ColorMatrixColorFilter
 import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.Drawable
 import android.os.Build
+import android.os.Handler
+import android.os.HandlerThread
+import android.os.Process
 import android.util.LruCache
 import app.tacit.Graph
 import app.tacit.Prefs
+import app.tacit.core.IconBudget
 import app.tacit.core.RowDensity
 
 class IconCache(private val context: Context, private val prefs: Prefs) {
 
     private val launcherApps = context.getSystemService(LauncherApps::class.java)
-    private val memory = object : LruCache<String, Bitmap>(12 * 1024 * 1024) {
+    private val memory = object : LruCache<String, Bitmap>(IconBudget.bytes(Runtime.getRuntime().maxMemory())) {
         override fun sizeOf(key: String, value: Bitmap): Int = value.byteCount
+    }
+    private val renderer: Handler by lazy {
+        val thread = HandlerThread("tacit-icons", Process.THREAD_PRIORITY_DEFAULT)
+        thread.start()
+        Handler(thread.looper)
     }
     private val packageOfKey = HashMap<String, String>()
     private var seenMode = ""
@@ -40,9 +49,9 @@ class IconCache(private val context: Context, private val prefs: Prefs) {
         memory.get(key)?.let { return done(it) }
         val born = generation
         val size = Ui.dp(context, RowDensity.of(prefs.density).iconDp)
-        Graph.worker.post {
+        renderer.post {
             if (!wanted() || born != generation) return@post
-            val bitmap = runCatching { render(payload, foreground, size) }.getOrNull()
+            val bitmap = runCatching { render(payload, foreground, size)?.let(::onGpu) }.getOrNull()
             Graph.main.post {
                 if (born == generation) {
                     if (bitmap != null) {
@@ -107,6 +116,12 @@ class IconCache(private val context: Context, private val prefs: Prefs) {
             drawable.colorFilter = ColorMatrixColorFilter(ColorMatrix().apply { setSaturation(0f) })
         }
         return draw(drawable, 1f, size)
+    }
+
+    private fun onGpu(bitmap: Bitmap): Bitmap {
+        val copy = bitmap.copy(Bitmap.Config.HARDWARE, false) ?: return bitmap
+        bitmap.recycle()
+        return copy
     }
 
     private fun draw(drawable: Drawable, scale: Float, size: Int): Bitmap {

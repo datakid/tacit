@@ -18,6 +18,7 @@ import android.text.InputType
 import android.text.TextWatcher
 import android.view.Gravity
 import android.view.KeyEvent
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowInsets
@@ -44,6 +45,7 @@ import app.tacit.core.AliasRules
 import app.tacit.core.ChangeGate
 import app.tacit.core.ComposeInput
 import app.tacit.core.DrawerList
+import app.tacit.core.DrawerPrewarm
 import app.tacit.core.DrawerTab
 import app.tacit.core.ItemKind
 import app.tacit.core.ParsedQuery
@@ -112,7 +114,12 @@ class SearchActivity : Activity(), RowCallbacks {
         buildViews()
         Graph.addListener(refreshListener)
         registerBack()
-        runQuery("")
+        android.os.Trace.beginSection("tacit.firstQuery")
+        try {
+            runQuery("")
+        } finally {
+            android.os.Trace.endSection()
+        }
         reportFullyDrawn()
     }
 
@@ -162,6 +169,15 @@ class SearchActivity : Activity(), RowCallbacks {
     }
 
     private fun buildViews() {
+        android.os.Trace.beginSection("tacit.buildViews")
+        try {
+            buildViewsTraced()
+        } finally {
+            android.os.Trace.endSection()
+        }
+    }
+
+    private fun buildViewsTraced() {
         val current = Ui.look(this)
         look = current
         drawerOpen = false
@@ -395,6 +411,10 @@ class SearchActivity : Activity(), RowCallbacks {
             contentDescription = getString(R.string.drawer_button)
             background = Ui.ripple(context, palette, oval = true)
             isClickable = true
+            setOnTouchListener { _, event ->
+                if (event.actionMasked == MotionEvent.ACTION_DOWN) prewarmDrawer()
+                false
+            }
             setOnClickListener { if (drawerOpen) closeDrawer(true) else openDrawer() }
         } else null
         val bar = Ui.row(this).apply {
@@ -670,6 +690,21 @@ class SearchActivity : Activity(), RowCallbacks {
         val built = DrawerList.build(all, drawerTab)
         drawerCache[drawerTab.ordinal] = built
         return built
+    }
+
+    private fun prewarmDrawer() {
+        if (drawerOpen || strip == null) return
+        val data = drawerRows()
+        val rowHeight = Ui.dp(this, RowDensity.of(Graph.prefs.density).rowDp)
+        val wanted = DrawerPrewarm.rows(resources.displayMetrics.heightPixels, rowHeight)
+        val foreground = Ui.palette(this).foreground
+        var requested = 0
+        for (item in data.items) {
+            if (requested >= wanted) break
+            if (item.kind != ItemKind.APP) continue
+            requested++
+            Graph.icons.load(item.key, item.payload, foreground, ALWAYS, DISCARD)
+        }
     }
 
     private fun showDrawerRows() {
@@ -957,5 +992,7 @@ class SearchActivity : Activity(), RowCallbacks {
         const val PROGRESS_SEARCH_MS = 500L
         const val FILES_STATUS_KEY = "files:status"
         const val SETTINGS_PAYLOAD = "tacit|app.tacit.ui.SettingsActivity"
+        val ALWAYS: () -> Boolean = { true }
+        val DISCARD: (android.graphics.Bitmap?) -> Unit = { _ -> }
     }
 }

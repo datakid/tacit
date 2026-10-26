@@ -84,6 +84,19 @@ class IconCacheTest {
     }
 
     @Test
+    fun anIconIsRenderedWhileTheWorkerIsBusy() {
+        val mine = Graph.apps.appItems().first { Graph.apps.packageOf(it.payload) == packageName }
+        val release = CountDownLatch(1)
+        Graph.worker.post { release.await(30, TimeUnit.SECONDS) }
+        try {
+            assertNotNull(render(mine))
+            assertNotNull(cachedNow(mine.key))
+        } finally {
+            release.countDown()
+        }
+    }
+
+    @Test
     fun evictingAnUnknownPackageChangesNothing() {
         val mine = Graph.apps.appItems().first { Graph.apps.packageOf(it.payload) == packageName }
         assertNotNull(render(mine))
