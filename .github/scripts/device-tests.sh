@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 adb logcat -c
+adb logcat -b events -c
 status=0
 : > device-tests.log
 : > tests-ran.txt
 : > logcat.txt
+: > events-focus.txt
 rm -f timeout-diagnostics.txt
 for cls in ${1//,/ }; do
   ./gradlew connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class="$cls" --stacktrace >> device-tests.log 2>&1 &
@@ -42,7 +44,9 @@ for cls in ${1//,/ }; do
     awk '/<testcase /{match($0,/name="[^"]*"/); name=substr($0,RSTART,RLENGTH)} /<failure/{print "FAILED " name; n=5} n>0{print; n--}' "$f" | cut -c1-260
   done >> tests-ran.txt
   adb logcat -d -v threadtime >> logcat.txt
+  adb logcat -b events -d -v threadtime | grep -E "input_focus|am_anr|am_crash" >> events-focus.txt
   adb logcat -c
+  adb logcat -b events -c
 done
 rm -rf tacit-shots
 adb pull /sdcard/tacit-shots tacit-shots >/dev/null 2>&1 || true
@@ -66,6 +70,18 @@ strictmode_report() {
     }
   ' logcat.txt
 }
+focus_report() {
+  [ -s events-focus.txt ] || return 0
+  grep -E "TestRunner: failed:" logcat.txt | head -4 | while read -r line; do
+    now=$(date -d "$(date +%Y)-${line:0:14}" +%s 2>/dev/null) || continue
+    lo=$(date -d "@$((now - 14))" +"%m-%d %H:%M:%S")
+    hi=$(date -d "@$((now + 1))" +"%m-%d %H:%M:%S")
+    echo "${line#*failed: }"
+    awk -v lo="$lo" -v hi="$hi" 'substr($0, 1, 14) >= lo && substr($0, 1, 14) <= hi' events-focus.txt |
+      sed -E 's/^(.{18}) +[0-9]+ +[0-9]+ [A-Z] /\1 /' | cut -c1-170 | tail -14
+  done
+  grep -E "am_anr|am_crash" events-focus.txt | head -3 | cut -c1-170
+}
 strictmode_report > strictmode-raw.txt
 {
   head -1 strictmode-raw.txt
@@ -78,6 +94,8 @@ strictmode_report > strictmode-raw.txt
   echo "--- failures"
   grep -A6 -E "^(FAILED|TIMEOUT)" tests-ran.txt | head -c 1200
   echo
+  echo "--- focus around failures"
+  focus_report | head -c 1500
   echo "--- strictmode"
   head -c 1000 strictmode.txt
   echo "--- timeout diagnostics"
