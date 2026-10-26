@@ -2,7 +2,7 @@ package app.tacit.core
 
 class ScoredItem(val item: SearchItem, val score: Int)
 
-class SearchEngine(private val scorer: Scorer = Scorer()) {
+class SearchEngine(private val scorer: Scorer = Scorer(), private val prefilter: Boolean = true) {
 
     @Volatile
     private var items: Array<SearchItem> = emptyArray()
@@ -28,12 +28,33 @@ class SearchEngine(private val scorer: Scorer = Scorer()) {
         val queryWords = Normalizer.words(query)
         val single = if (queryWords.size == 1) queryWords[0] else query
         val heap = TopK(limit)
+        val filter = prefilter
+        val queryMask = if (filter) maskOf(single, queryWords) else 0L
+        val allowedMisses = if (filter) missesAllowed(single, queryWords) else 0
         for (item in items) {
             if (kinds != null && item.kind !in kinds) continue
+            if (filter && java.lang.Long.bitCount(queryMask and item.charMask.inv()) > allowedMisses) continue
             val score = scorer.score(single, queryWords, item)
             if (score > 0) heap.offer(item, adjust(score, item))
         }
         return heap.sortedDescending()
+    }
+
+    private fun maskOf(single: String, queryWords: List<String>): Long {
+        var mask = 0L
+        if (queryWords.size > 1) {
+            for (word in queryWords) mask = mask or CharMask.of(word)
+        } else {
+            for (c in single) if (c != ' ') mask = mask or CharMask.bit(c)
+        }
+        return mask
+    }
+
+    private fun missesAllowed(single: String, queryWords: List<String>): Int {
+        if (queryWords.size <= 1) return scorer.typoAllowed(single)
+        var sum = 0
+        for (word in queryWords) sum += scorer.typoAllowed(word)
+        return sum
     }
 
     private fun adjust(score: Int, item: SearchItem): Int {
