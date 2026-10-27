@@ -51,7 +51,7 @@ class IconCache(private val context: Context, private val prefs: Prefs) {
         val size = Ui.dp(context, RowDensity.of(prefs.density).iconDp)
         renderer.post {
             if (!wanted() || born != generation) return@post
-            val bitmap = runCatching { render(payload, foreground, size)?.let(::onGpu) }.getOrNull()
+            val bitmap = runCatching { render(payload, foreground, size) }.getOrNull()
             Graph.main.post {
                 if (born == generation) {
                     if (bitmap != null) {
@@ -116,12 +116,6 @@ class IconCache(private val context: Context, private val prefs: Prefs) {
             drawable.colorFilter = ColorMatrixColorFilter(ColorMatrix().apply { setSaturation(0f) })
         }
         return draw(drawable, 1f, size)
-    }
-
-    private fun onGpu(bitmap: Bitmap): Bitmap {
-        val copy = bitmap.copy(Bitmap.Config.HARDWARE, false) ?: return bitmap
-        bitmap.recycle()
-        return copy
     }
 
     private fun draw(drawable: Drawable, scale: Float, size: Int): Bitmap {
