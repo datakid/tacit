@@ -19,6 +19,7 @@ done > benchmark-failures.txt
 {
   echo "exit status: $status"
   echo "Emulator numbers are a trend, not a measurement; this step never blocks."
+  grep -ho '<testcase [^>]*name="[^"]*"' $(find benchmark/build/outputs -name 'TEST-*.xml' 2> /dev/null) 2> /dev/null | sed -E 's/.*name="([^"]*)"/ran \1/'
   python3 .github/scripts/benchmark-summary.py benchmark-out
   if ! ls benchmark-out/*.json > /dev/null 2>&1; then
     echo "--- json files seen"

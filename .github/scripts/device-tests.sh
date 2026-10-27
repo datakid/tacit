@@ -78,7 +78,7 @@ focus_report() {
     hi=$(date -d "@$((now + 1))" +"%m-%d %H:%M:%S")
     echo "${line#*failed: }"
     awk -v lo="$lo" -v hi="$hi" 'substr($0, 1, 14) >= lo && substr($0, 1, 14) <= hi' events-focus.txt |
-      sed -E 's/^(.{18}) +[0-9]+ +[0-9]+ [A-Z] /\1 /' | cut -c1-170 | tail -14
+      sed -E 's/^(.{18}) +[0-9]+ +[0-9]+ [A-Z] /\1 /; s/^[0-9]+-[0-9]+ //; s/input_focus: \[//; s/ [0-9a-f]{5,8} / /; s/,reason=[^]]*\]?//; s/\]$//; s/app\.tacit\/app\.tacit\.ui\./tacit\//; s/com\.google\.android\.[a-z.]*\///; s/ \(server\)//' | cut -c1-110 | tail -18
   done
   grep -E "am_anr|am_crash" events-focus.txt | head -3 | cut -c1-170
 }
