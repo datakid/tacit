@@ -4,6 +4,7 @@ rm -rf benchmark-out benchmark-pulled
 mkdir -p benchmark-out
 ./gradlew :benchmark:connectedBenchmarkAndroidTest \
   -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.suppressErrors=EMULATOR,LOW-BATTERY,NOT-PROFILEABLE,DEBUGGABLE,UNLOCKED \
+  -Pandroid.testInstrumentationRunnerArguments.tacit.compilation=none \
   -Pandroid.testInstrumentationRunnerArguments.class=app.tacit.benchmark.TypingBenchmark,app.tacit.benchmark.ColdStartSectionsBenchmark \
   --stacktrace > benchmark-gradle.log 2>&1 || status=$?
 find benchmark/build -name '*.json' -path '*additional_test_output*' -exec cp {} benchmark-out/ \; 2>/dev/null

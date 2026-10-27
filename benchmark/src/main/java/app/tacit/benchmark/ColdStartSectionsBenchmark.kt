@@ -1,6 +1,5 @@
 package app.tacit.benchmark
 
-import androidx.benchmark.macro.CompilationMode
 import androidx.benchmark.macro.ExperimentalMetricApi
 import androidx.benchmark.macro.StartupMode
 import androidx.benchmark.macro.StartupTimingMetric
@@ -27,7 +26,7 @@ class ColdStartSectionsBenchmark {
             TraceSectionMetric("tacit.buildViews", TraceSectionMetric.Mode.Sum),
             TraceSectionMetric("tacit.firstQuery", TraceSectionMetric.Mode.Sum)
         ),
-        compilationMode = CompilationMode.Partial(),
+        compilationMode = compilationMode(),
         iterations = 5,
         startupMode = StartupMode.COLD
     ) {

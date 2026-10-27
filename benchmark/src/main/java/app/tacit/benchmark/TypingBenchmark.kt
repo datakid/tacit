@@ -1,6 +1,5 @@
 package app.tacit.benchmark
 
-import androidx.benchmark.macro.CompilationMode
 import androidx.benchmark.macro.ExperimentalMetricApi
 import androidx.benchmark.macro.FrameTimingMetric
 import androidx.benchmark.macro.StartupMode
@@ -26,7 +25,7 @@ class TypingBenchmark {
             TraceSectionMetric("tacit.query", TraceSectionMetric.Mode.Sum),
             TraceSectionMetric("tacit.query", TraceSectionMetric.Mode.Max)
         ),
-        compilationMode = CompilationMode.Partial(),
+        compilationMode = compilationMode(),
         iterations = 5,
         startupMode = StartupMode.WARM,
         setupBlock = {
