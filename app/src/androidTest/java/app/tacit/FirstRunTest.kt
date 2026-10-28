@@ -3,6 +3,9 @@ package app.tacit
 import android.app.Activity
 import android.app.Instrumentation
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Rect
 import android.view.View
 import android.widget.EditText
@@ -107,6 +110,40 @@ class FirstRunTest {
         assertTrue("card missing", cardShown())
         assertNotNull(device.wait(Until.findObject(By.text(context.getString(R.string.welcome_title))), 5000))
         assertNotNull(device.findObject(By.text(context.getString(R.string.welcome_ok))))
+    }
+
+    @Test
+    fun cardShowsTheMarkBesideTheTitleInsideTheCard() {
+        for (bottom in listOf(false, true)) {
+            Graph.prefs.barAtBottom = bottom
+            launchFresh()
+            assertTrue("card missing, bar at bottom=$bottom", cardShown())
+            val cardBounds = Rect()
+            val markBounds = Rect()
+            val titleBounds = Rect()
+            var decorative = false
+            var drawn = 0
+            scenario!!.onActivity {
+                val mark = it.findViewById<View>(R.id.welcome_mark)
+                assertNotNull("mark missing", mark)
+                assertTrue(it.findViewById<View>(R.id.welcome_card).getGlobalVisibleRect(cardBounds))
+                assertTrue(mark.getGlobalVisibleRect(markBounds))
+                decorative = mark.importantForAccessibility == View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                val bitmap = Bitmap.createBitmap(mark.width, mark.height, Bitmap.Config.ARGB_8888)
+                mark.draw(Canvas(bitmap))
+                val pixels = IntArray(bitmap.width * bitmap.height)
+                bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+                drawn = pixels.count { pixel -> Color.alpha(pixel) > 0 }
+            }
+            val title = device.wait(Until.findObject(By.text(context.getString(R.string.welcome_title))), 5000)
+            assertNotNull("title missing", title)
+            titleBounds.set(title.visibleBounds)
+            assertTrue("mark outside the card", cardBounds.contains(markBounds))
+            assertTrue("mark is empty", markBounds.width() > 0 && markBounds.height() > 0)
+            assertFalse("mark overlaps the title", Rect.intersects(markBounds, titleBounds))
+            assertTrue("mark should be hidden from screen readers", decorative)
+            assertTrue("mark draws nothing", drawn > 40)
+        }
     }
 
     @Test

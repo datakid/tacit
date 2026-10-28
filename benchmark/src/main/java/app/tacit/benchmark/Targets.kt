@@ -1,6 +1,8 @@
 package app.tacit.benchmark
 
+import androidx.benchmark.macro.CompilationMode
 import androidx.benchmark.macro.MacrobenchmarkScope
+import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.Until
 
@@ -16,6 +18,9 @@ object Targets {
         "blutoo", "", "2", "2+", "2+2", "", "c", "ca", "cal", "calc", "", "a", "ag", ""
     )
 }
+
+fun compilationMode(): CompilationMode =
+    if (InstrumentationRegistry.getArguments().getString("tacit.compilation") == "none") CompilationMode.None() else CompilationMode.Partial()
 
 fun MacrobenchmarkScope.waitForSearchField() {
     device.wait(Until.hasObject(By.res(Targets.TACIT, Targets.SEARCH_FIELD_ID)), Targets.TIMEOUT_MS)

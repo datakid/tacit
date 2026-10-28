@@ -61,7 +61,8 @@ class Scorer(var strictness: Strictness = Strictness.NORMAL) {
         var sum = 0
         var lastIndex = -1
         var ordered = true
-        for (queryWord in queryWords) {
+        for (wordIndex in queryWords.indices) {
+            val queryWord = queryWords[wordIndex]
             var bestTier = 0
             var bestIndex = -1
             for ((index, word) in name.words.withIndex()) {
@@ -114,7 +115,7 @@ class Scorer(var strictness: Strictness = Strictness.NORMAL) {
         return if (score >= query.length * 12) score.coerceAtLeast(1) else 0
     }
 
-    private fun typoAllowed(query: String): Int = when (strictness) {
+    fun typoAllowed(query: String): Int = when (strictness) {
         Strictness.OFF -> 0
         Strictness.NORMAL -> when {
             query.length < 3 -> 0

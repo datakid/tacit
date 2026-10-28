@@ -2,6 +2,7 @@
 <resources>
     <item name="search_input" type="id" />
     <item name="welcome_card" type="id" />
+    <item name="welcome_mark" type="id" />
     <item name="welcome_ok" type="id" />
     <item name="welcome_home" type="id" />
     <item name="welcome_rows_comfortable" type="id" />

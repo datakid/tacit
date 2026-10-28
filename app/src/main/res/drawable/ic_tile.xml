@@ -7,15 +7,18 @@
     android:tint="?android:attr/colorControlNormal">
     <path
         android:fillColor="#00000000"
-        android:pathData="M5,5.5L12,12L5,18.5"
+        android:pathData="M8.48,2.71V13.48A4.18,4.18 0 0 0 12.66,17.66H16.07"
         android:strokeColor="#FFFFFFFF"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:strokeWidth="2" />
+        android:strokeWidth="2.64" />
     <path
         android:fillColor="#00000000"
-        android:pathData="M14,18.5L19,18.5"
+        android:pathData="M3.75,8.21H13.21"
         android:strokeColor="#FFFFFFFF"
-        android:strokeLineCap="round"
-        android:strokeWidth="2" />
+        android:strokeWidth="2.2" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M15.41,14.47L19.81,17.66L15.41,20.86z"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineJoin="round"
+        android:strokeWidth="0.88" />
 </vector>

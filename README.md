@@ -1,8 +1,10 @@
+<img src="fastlane/metadata/android/en-US/images/icon.png" width="96" height="96" alt="Tacit icon">
+
 # Tacit
 
 A keyboard-first, offline, black-and-white Android launcher. You type, press Enter, and it's done. Inspired by KISS Launcher, built for F-Droid. "Raycast for Android."
 
-> **Status: 1.0.1-beta** (1.0.0 plus the test and CI safety net for 1.1; no behaviour change). CI builds it, runs the unit tests, and runs the device tests on Android 14, 15 and 16 emulators. Nothing here has been measured on a real phone, and there are no benchmark numbers from real devices. See `docs/HANDOFF.md`.
+> **Status: 1.1.0 release candidate** (stable release notes in `docs/release-notes/v1.1.0.md`; the owner signs and publishes it). CI builds it, runs the unit tests, and runs the device tests on Android 14, 15 and 16 emulators; a non-blocking CI job also runs the benchmark module on an API 35 emulator and prints a trend. Nothing here has been measured on a real phone, and there are no benchmark numbers from real devices. See `docs/HANDOFF.md`.
 
 ## Features
 - **First run**: a small card over the list says what Tacit does and offers to make it your home app. It shows once per install.
@@ -50,7 +52,7 @@ A keyboard-first, offline, black-and-white Android launcher. You type, press Ent
   - Number bases (`255 in hex`), time zones (`5pm dubai in tokyo`, `time in cairo`), dates (`days until dec 25`, `next friday + 3 weeks`, `today - 2024-01-01`).
   - Enter copies the result.
 - **Web search**: DuckDuckGo (default), Google, Wikipedia, YouTube, OpenStreetMap. Engines are editable in Settings. The query opens in your browser.
-- **Row size and app drawer**: rows are Comfortable (64 dp, large icons) by default or Compact (48 dp, small icons, the subtitle on the same line), in Settings → Look or on the first-run card. An optional app drawer, off by default, adds an Apps button beside Settings: an A–Z list of installed apps with a letter strip. Long-press works as in search. A System settings tab can be added next to Apps (Settings → Look).
+- **Row size and app drawer**: rows are Comfortable (64 dp, large icons) by default or Compact (48 dp, small icons, the subtitle on the same line), in Settings → Look or on the first-run card. An optional app drawer, off by default, adds an Apps button beside Settings: an A–Z list of installed apps with a letter strip. Long-press works as in search. A System settings tab can be added next to Apps (Settings → Look). Touching the Apps button builds the list and starts drawing the first screenful of icons before the drawer opens. There is no Files tab (decision 85).
 - **Ways to open it**: default Home, Assistant (minimal voice service stub, no voice features), Quick Settings tile, Tacit's own search-bar widget for other launchers, launcher app shortcuts, hardware keys (↑ ↓ Enter Tab Esc).
 - Export and import of everything as one JSON file. Import first shows how many aliases, snippets and quicklinks the file holds and replaces your data only after you confirm. Offline crash log with "Share last crash". Backup is disabled.
 - **Arabic** translation of every screen; RTL layout.
@@ -102,9 +104,9 @@ All versions come from the verified data sheet.
 ## Tests
 | Suite | Where | Command |
 |---|---|---|
-| JVM unit tests: scorer, calculator, parsing, detectors, CSV, files, file index format and migration, matcher equivalence and speed, folder-grant names, keystroke budget on 1,000 apps + 3,000 contacts, golden ranking (`golden/ranking.tsv`) and golden file search (`golden/files.tsv`, 50,000 entries) | CI | `./gradlew testDebugUnitTest` |
+| JVM unit tests: scorer, calculator, parsing, detectors, CSV, files, file index format and migration, matcher equivalence and speed, search prefilter equivalence and speed, folder-grant names, keystroke budget on 1,000 apps + 3,000 contacts, golden ranking (`golden/ranking.tsv`) and golden file search (`golden/files.tsv`, 50,000 entries) | CI | `./gradlew testDebugUnitTest` |
 | Device tests: search screen (Espresso), settings, aliases, quicklinks, actions, drawer and first-run card (UI Automator), screenshots, backup compatibility (formats 1 and 2), app screens, custom intents and the intent sanitizer, pin requests, intent and platform contracts; written but not in the CI list: entry points (one test crashes, see `docs/HANDOFF.md`) and keyboard | CI emulators (API 34, 35, 36) or phone | `./gradlew connectedDebugAndroidTest` |
-| Speed: cold, warm and hot startup; frames for a 30-keystroke script; `tacit.query` trace time; KISS comparison | **your phones** | `./gradlew :benchmark:connectedBenchmarkAndroidTest` |
+| Speed: cold, warm and hot startup; frames for a 30-keystroke script; `tacit.query`, `tacit.cache.read`, `tacit.buildViews` and `tacit.firstQuery` trace time; KISS comparison | **your phones** (CI runs it on an API 35 emulator as a non-blocking trend, never as a measurement) | `./gradlew :benchmark:connectedBenchmarkAndroidTest` |
 | Speed profile: baseline profile generator | your phone | `./gradlew :benchmark:connectedBenchmarkAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=app.tacit.benchmark.BaselineProfileGenerator`, then copy the generated `*-baseline-prof.txt` over `app/src/main/baseline-prof.txt` |
 
 The fixtures (`app/src/sharedTest/.../Fixtures.kt`, `FileFixtures.kt`) are generated from a fixed seed, so benchmark numbers are comparable between devices and runs. Performance limits live in `Budgets.kt`; golden files, `Budgets.kt`, the workflow and its scripts, `lint-baseline.xml`, `app/build.gradle.kts` and the manifest are protected files that a pull request must list (decisions 66 to 68).

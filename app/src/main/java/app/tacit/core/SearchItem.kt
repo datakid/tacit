@@ -20,6 +20,9 @@ class SearchItem(
     var aliases: Array<String> = emptyArray()
         private set
     var pinned: Boolean = false
+    private val nameMask: Long
+    var charMask: Long
+        private set
 
     init {
         val collected = ArrayList<IndexedName>()
@@ -32,10 +35,17 @@ class SearchItem(
             }
         }
         names = collected.distinctBy { it.full }.toTypedArray()
+        var mask = 0L
+        for (name in names) mask = mask or CharMask.of(name.full)
+        nameMask = mask
+        charMask = mask
     }
 
     fun withAliases(values: Collection<String>): SearchItem {
         aliases = values.map { Normalizer.normalize(it).trim() }.filter { it.isNotEmpty() }.toTypedArray()
+        var mask = nameMask
+        for (alias in aliases) mask = mask or CharMask.of(alias)
+        charMask = mask
         return this
     }
 }

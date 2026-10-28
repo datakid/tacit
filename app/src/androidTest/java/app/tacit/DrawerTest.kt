@@ -142,6 +142,34 @@ class DrawerTest {
         instrumentation.waitForIdleSync()
     }
 
+    private fun touchAppsButton(action: Int) {
+        scenario!!.onActivity { activity ->
+            val button = appsButton(activity)!!
+            val time = SystemClock.uptimeMillis()
+            val event = MotionEvent.obtain(time, time, action, button.width / 2f, button.height / 2f, 0)
+            button.dispatchTouchEvent(event)
+            event.recycle()
+        }
+    }
+
+    @Test
+    fun touchingTheAppsButtonRendersTheFirstIconsBeforeTheDrawerOpens() {
+        val mine = Graph.apps.appItems().first { Graph.apps.packageOf(it.payload) == context.packageName }
+        val first = SearchItem(mine.key, ItemKind.APP, "0 Tacit", payload = mine.payload)
+        Graph.useItemsForTesting(listOf(first) + apps)
+        launch()
+        scenario!!.onActivity { Graph.icons.clear() }
+        assertNull(read { Graph.icons.cached(first.key) })
+        touchAppsButton(MotionEvent.ACTION_DOWN)
+        try {
+            waitFor("the first icon was not rendered by the touch") { read { Graph.icons.cached(first.key) } != null }
+            assertTrue(!stripShown())
+        } finally {
+            touchAppsButton(MotionEvent.ACTION_CANCEL)
+        }
+        assertTrue(!stripShown())
+    }
+
     @Test
     fun noButtonOrStripWhileTheDrawerIsOff() {
         prefs.drawerEnabled = false
