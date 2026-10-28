@@ -450,7 +450,14 @@ class SearchActivity : Activity(), RowCallbacks {
             setPadding(pad, pad, pad, pad)
             isClickable = true
         }
-        card.addView(Ui.text(this, getString(R.string.welcome_title), 18f, palette.foreground, bold = true))
+        val heading = Ui.row(this)
+        heading.addView(ImageView(this).apply {
+            id = R.id.welcome_mark
+            setImageDrawable(IconSet(context, palette.foreground).make(R.drawable.ic_mark))
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        }, LinearLayout.LayoutParams(Ui.dp(this, 28), Ui.dp(this, 28)).apply { marginEnd = Ui.dp(this@SearchActivity, 10) })
+        heading.addView(Ui.text(this, getString(R.string.welcome_title), 18f, palette.foreground, bold = true), Ui.weight())
+        card.addView(heading, Ui.matchWrap())
         card.addView(Ui.text(this, getString(R.string.welcome_body), 14f, palette.muted).apply {
             maxLines = Int.MAX_VALUE
             ellipsize = null
