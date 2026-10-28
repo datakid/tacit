@@ -4,6 +4,12 @@ import android.Manifest
 import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.drawable.AdaptiveIconDrawable
+import android.graphics.drawable.Drawable
+import android.os.Build
 import android.provider.Settings
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -121,5 +127,57 @@ class PlatformContractTest {
     @Test
     fun settingsDefaultAppsResolves() {
         assertNotNull(pm.resolveActivity(Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS), 0))
+    }
+
+    private fun launcherIcon(): AdaptiveIconDrawable = context.getDrawable(R.mipmap.ic_launcher) as AdaptiveIconDrawable
+
+    private fun layerBitmap(layer: Drawable, size: Int): Bitmap {
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        layer.setBounds(0, 0, size, size)
+        layer.draw(Canvas(bitmap))
+        return bitmap
+    }
+
+    private fun markPixels(bitmap: Bitmap): Int {
+        var count = 0
+        for (y in 0 until bitmap.height) for (x in 0 until bitmap.width) if (Color.alpha(bitmap.getPixel(x, y)) > 127) count++
+        return count
+    }
+
+    private fun farthestMarkPixel(bitmap: Bitmap): Double {
+        val half = bitmap.width / 2.0
+        var farthest = 0.0
+        for (y in 0 until bitmap.height) for (x in 0 until bitmap.width) {
+            if (Color.alpha(bitmap.getPixel(x, y)) > 127) farthest = maxOf(farthest, Math.hypot(x + 0.5 - half, y + 0.5 - half))
+        }
+        return farthest
+    }
+
+    @Test
+    fun launcherIconBackgroundIsInk() {
+        val pixel = layerBitmap(launcherIcon().background, 8).getPixel(4, 4)
+        assertEquals(context.getColor(R.color.icon_background) and 0xFFFFFF, pixel and 0xFFFFFF)
+        assertEquals(255, Color.alpha(pixel))
+    }
+
+    @Test
+    fun launcherIconMarkIsPaperAndInsideTheSafeZone() {
+        val size = 216
+        val bitmap = layerBitmap(launcherIcon().foreground, size)
+        assertTrue("mark is missing", markPixels(bitmap) > size * size * 4 / 100)
+        assertEquals(context.getColor(R.color.icon_foreground) and 0xFFFFFF, bitmap.getPixel(88, 80) and 0xFFFFFF)
+        assertTrue("mark leaves the 66 dp safe zone", farthestMarkPixel(bitmap) <= size * 33.0 / 108.0)
+    }
+
+    @Test
+    fun launcherIconThemedMarkIsInsideTheSafeZone() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val size = 216
+            val layer = launcherIcon().monochrome
+            assertNotNull(layer)
+            val bitmap = layerBitmap(layer!!, size)
+            assertTrue("themed mark is missing", markPixels(bitmap) > size * size * 4 / 100)
+            assertTrue("themed mark leaves the 66 dp safe zone", farthestMarkPixel(bitmap) <= size * 33.0 / 108.0)
+        }
     }
 }

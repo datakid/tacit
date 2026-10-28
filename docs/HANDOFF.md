@@ -76,6 +76,7 @@ Tacit is at 1.0.1-beta (1.0.0 plus the safety net for 1.1). CI builds it, runs t
 - [ ] TalkBack: the letter strip says "Alphabet index", the drawer tabs say which one is selected, the More button says "More actions"; it has not been run with TalkBack on a phone (the labels are checked by `AccessibilityLabelsTest`)
 - [ ] Large font (1.3) and RTL (Arabic system language) on the search screen in both row sizes; the screenshot matrix in the CI artifacts shows all sixteen combinations
 - [ ] Compare cold start with KISS: `adb shell am start -W -n app.tacit/.ui.SearchActivity` against `fr.neamar.kiss/.MainActivity`, 10 runs each after `adb shell am force-stop`
+- [ ] Icon: the new launcher icon in your launcher's circle, squircle and themed (monochrome) shapes, on a dark and a light wallpaper; the Quick Settings tile, the two long-press shortcuts, the widget's search mark, and the splash screen on Android 12 and later
 - [ ] Drawer, first press: with the drawer on and 300+ apps, the first screenful of icons is there as the drawer opens (the Apps button starts drawing them on touch), then scroll fast: icons catch up without stutter and none is wrong after an app update
 - [ ] Run the benchmark module on a flagship and a budget phone and record the numbers, including `tacit.cache.read`, `tacit.buildViews` and `tacit.firstQuery` from `ColdStartSectionsBenchmark`; the emulator trend in CI is not a substitute
 

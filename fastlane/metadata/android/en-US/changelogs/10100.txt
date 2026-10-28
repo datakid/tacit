@@ -1,4 +1,5 @@
 Stable release 1.1.
+• New app icon
 • Files: an indexing row with early results, automatic refresh, faster scans and search
 • Quicklinks to screens inside other apps, custom intents, legacy shortcuts and icons
 • Shortcuts pinned from other apps can be added to Tacit

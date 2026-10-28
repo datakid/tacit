@@ -1,3 +1,5 @@
+<img src="fastlane/metadata/android/en-US/images/icon.png" width="96" height="96" alt="Tacit icon">
+
 # Tacit
 
 A keyboard-first, offline, black-and-white Android launcher. You type, press Enter, and it's done. Inspired by KISS Launcher, built for F-Droid. "Raycast for Android."
